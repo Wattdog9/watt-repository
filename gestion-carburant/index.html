@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carbu·Suivi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F2F5F4;
+    --surface: #FFFFFF;
+    --sunken: #E8EDEB;
+    --ink: #15231F;
+    --muted: #5A6B66;
+    --line: #D6DEDB;
+    --accent: #0E6B5C;
+    --accent-ink: #FFFFFF;
+    --fuel: #B86E00;
+    --ok: #2E7D4F;
+    --warn: #A86A12;
+    --crit: #B3261E;
+    --s1: #0E6B5C;
+    --s2: #5B4BB0;
+    --f1: #0E6B5C;
+    --f2: #B86E00;
+    --f3: #3F6E9E;
+    --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0E1614; --surface: #15201D; --sunken: #1B2925; --ink: #E3ECE9; --muted: #93A6A0;
+      --line: #273833; --accent: #3DB39C; --accent-ink: #06201A; --fuel: #F0A531;
+      --ok: #5BC48A; --warn: #E0A33C; --crit: #F07167;
+      --s1: #3DB39C; --s2: #9D8CF0; --f1: #3DB39C; --f2: #F0A531; --f3: #74A7DA;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0E1614; --surface: #15201D; --sunken: #1B2925; --ink: #E3ECE9; --muted: #93A6A0;
+    --line: #273833; --accent: #3DB39C; --accent-ink: #06201A; --fuel: #F0A531;
+    --ok: #5BC48A; --warn: #E0A33C; --crit: #F07167;
+    --s1: #3DB39C; --s2: #9D8CF0; --f1: #3DB39C; --f2: #F0A531; --f3: #74A7DA;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 var(--body);
+    padding-inline: 16px; padding-block: 0 48px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .mono { font-family: var(--mono); font-size: 13px; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* En-tête */
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 12px 24px; padding-block: 24px 16px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { flex: none; }
+  .brand h1 {
+    font: 700 30px/1 var(--display); letter-spacing: .01em; margin: 0; text-transform: uppercase;
+  }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav.tabs button {
+    border: 1px solid transparent; background: none; padding: 7px 14px; border-radius: 6px;
+    cursor: pointer; color: var(--muted); font-weight: 500;
+  }
+  nav.tabs button[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); }
+  nav.tabs button:hover { color: var(--ink); }
+
+  .notice {
+    margin-top: 16px; font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  }
+  .notice .tag {
+    font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em;
+    padding: 4px 7px; border-radius: 4px; background: var(--sunken); color: var(--muted);
+  }
+
+  section.view { display: grid; gap: 28px; margin-top: 24px; }
+  section.view > *, .two > *, .settings > * { min-width: 0; }
+  h2 {
+    font: 600 20px/1.2 var(--display); text-transform: uppercase; letter-spacing: .04em;
+    margin: 0 0 12px; text-wrap: balance;
+  }
+  h2 small { font: 400 13px var(--body); text-transform: none; letter-spacing: 0; color: var(--muted); margin-left: 8px; }
+  .label { font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+  /* Jauges des sources */
+  .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .gauge {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; display: grid; gap: 14px;
+  }
+  .gauge-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .gauge-head h3 { margin: 0; font: 600 18px/1.2 var(--body); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+  .pill {
+    font: 500 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .06em;
+    padding: 5px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap;
+  }
+  .pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.crit { color: var(--crit); }
+  .big { font: 600 38px/1 var(--display); letter-spacing: .01em; }
+  .big .unit { font-size: 18px; color: var(--muted); margin-left: 4px; }
+  .bar { height: 12px; border-radius: 3px; background: var(--sunken); overflow: hidden; position: relative; }
+  .bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+  .bar .tick { position: absolute; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .6; }
+  .kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .kv div { display: grid; gap: 2px; }
+  .kv strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Tableaux */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font: 500 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); background: var(--sunken); }
+  td.r, th.r { text-align: right; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tfoot td { font-weight: 600; border-top: 2px solid var(--line); border-bottom: 0; }
+  .sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+  .empty { padding: 28px; text-align: center; color: var(--muted); }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; align-items: start; }
+
+  /* Graphe mensuel */
+  .months { padding: 18px 20px; display: grid; gap: 12px; }
+  .mrow { display: grid; grid-template-columns: 76px 1fr 110px; gap: 12px; align-items: center; }
+  .mrow .stack { display: flex; height: 18px; background: var(--sunken); border-radius: 3px; overflow: hidden; }
+  .mrow .stack span { height: 100%; }
+  .mrow .val { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Formulaire */
+  form.entry { padding: 20px; display: grid; gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px 16px; }
+  .field { display: grid; gap: 5px; }
+  .field label { font-size: 13px; font-weight: 500; }
+  input, select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); min-height: 40px;
+  }
+  input:focus, select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .calc {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; border-radius: 8px; background: var(--sunken);
+  }
+  .calc .big { font-size: 30px; }
+  .msg { font-size: 14px; min-height: 1.5em; }
+  .msg.crit { color: var(--crit); } .msg.ok { color: var(--ok); } .msg.warn { color: var(--warn); }
+  .btn {
+    border: 1px solid var(--line); background: var(--surface); padding: 9px 16px; border-radius: 6px;
+    cursor: pointer; font-weight: 500; min-height: 40px;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.small { padding: 5px 10px; min-height: 0; font-size: 13px; }
+  .btn.danger { color: var(--crit); }
+  .btn.danger.armed { background: var(--crit); color: #fff; border-color: var(--crit); }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; margin-bottom: 12px; }
+  .toolbar .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+  .toolbar select { width: auto; min-width: 170px; }
+  .chip { font: 500 12px/1 var(--mono); padding: 4px 7px; border-radius: 4px; background: var(--sunken); }
+
+  /* Paramètres */
+  .settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; align-items: start; }
+  .settings .panel { padding: 16px 20px; display: grid; gap: 16px; }
+  .srow { display: grid; gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .srow:last-child { border-bottom: 0; padding-bottom: 0; }
+  .srow .grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .hint { font-size: 13px; color: var(--muted); margin: 0; max-width: 65ch; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px;
+    max-width: calc(100vw - 32px);
+  }
+
+  @media (max-width: 520px) {
+    .kv { grid-template-columns: 1fr 1fr; }
+    .mrow { grid-template-columns: 60px 1fr; }
+    .mrow .val { grid-column: 2; text-align: left; }
+    .big { font-size: 32px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bar > span, .mrow .stack span { transition: width .4s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+        <rect x="6" y="6" width="18" height="28" rx="3" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        <rect x="10" y="10" width="10" height="8" rx="1" fill="var(--fuel)"/>
+        <path d="M24 14h4l4 4v11a2 2 0 0 1-4 0v-6h-4" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>Carbu·Suivi</h1>
+        <p>Gestion du carburant · 3 fournisseurs · 2 sources de financement</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-bord" data-view="bord" aria-selected="true">Tableau de bord</button>
+      <button role="tab" id="tab-appro" data-view="appro" aria-selected="false">Approvisionnements</button>
+      <button role="tab" id="tab-param" data-view="param" aria-selected="false">Paramètres</button>
+    </nav>
+  </header>
+
+  <div class="notice" id="notice"></div>
+
+  <!-- TABLEAU DE BORD -->
+  <section class="view" id="view-bord" role="tabpanel" aria-labelledby="tab-bord">
+    <div>
+      <h2>Sources de financement <small>budget consommé par enveloppe</small></h2>
+      <div class="gauges" id="gauges"></div>
+    </div>
+
+    <div>
+      <h2>Fournisseur × source <small>montants engagés et volumes livrés</small></h2>
+      <div class="panel scroll"><table id="matrix"></table></div>
+    </div>
+
+    <div class="two">
+      <div>
+        <h2>Dépenses mensuelles</h2>
+        <div class="panel months" id="months"></div>
+      </div>
+      <div>
+        <h2>Prix en vigueur <small>FCFA / litre</small></h2>
+        <div class="panel scroll"><table id="prices"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- APPROVISIONNEMENTS -->
+  <section class="view" id="view-appro" role="tabpanel" aria-labelledby="tab-appro" hidden>
+    <div>
+      <h2>Nouveau bon d'approvisionnement</h2>
+      <form class="panel entry" id="form" novalidate>
+        <div class="grid">
+          <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" required></div>
+          <div class="field"><label for="f-bon">N° de bon</label><input id="f-bon" placeholder="BC-2026-0000" required></div>
+          <div class="field"><label for="f-fourn">Fournisseur</label><select id="f-fourn"></select></div>
+          <div class="field"><label for="f-source">Source de financement</label><select id="f-source"></select></div>
+          <div class="field"><label for="f-carb">Carburant</label>
+            <select id="f-carb"><option value="gasoil">Gasoil</option><option value="super">Super sans plomb</option></select></div>
+          <div class="field"><label for="f-litres">Quantité (litres)</label><input type="number" id="f-litres" min="1" step="1" inputmode="numeric" required></div>
+          <div class="field"><label for="f-prix">Prix unitaire (FCFA/L)</label><input type="number" id="f-prix" min="1" step="1" inputmode="numeric" required></div>
+          <div class="field"><label for="f-benef">Véhicule / service bénéficiaire</label><input id="f-benef" placeholder="ex. 4521 GH 01 — Direction technique"></div>
+        </div>
+        <div class="calc">
+          <div><div class="label">Montant du bon</div><div class="big num" id="f-total">0<span class="unit">FCFA</span></div></div>
+          <div id="f-reste" class="num" style="text-align:right"></div>
+        </div>
+        <div class="msg" id="f-msg" role="status"></div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Enregistrer le bon</button>
+          <button class="btn" type="reset">Effacer</button>
+        </div>
+      </form>
+    </div>
+
+    <div>
+      <div class="toolbar">
+        <h2 style="margin:0">Historique</h2>
+        <div class="filters">
+          <select id="flt-fourn" aria-label="Filtrer par fournisseur"></select>
+          <select id="flt-source" aria-label="Filtrer par source"></select>
+          <button class="btn" type="button" id="csv">Copier en CSV</button>
+        </div>
+      </div>
+      <div class="panel scroll"><table id="ops"></table></div>
+    </div>
+  </section>
+
+  <!-- PARAMÈTRES -->
+  <section class="view" id="view-param" role="tabpanel" aria-labelledby="tab-param" hidden>
+    <div class="settings">
+      <div>
+        <h2>Fournisseurs</h2>
+        <div class="panel" id="set-fourn"></div>
+      </div>
+      <div>
+        <h2>Sources de financement</h2>
+        <div class="panel" id="set-source"></div>
+        <p class="hint" style="margin-top:12px">Le seuil d'alerte s'applique aux deux sources : au-delà, la jauge passe en orange ; à 100 %, tout nouveau bon sur cette source est refusé.</p>
+      </div>
+    </div>
+    <div class="panel" style="padding:16px 20px; display:grid; gap:12px">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div class="field"><label for="p-seuil">Seuil d'alerte (%)</label><input type="number" id="p-seuil" min="1" max="100"></div>
+        <div class="field"><label for="p-exercice">Exercice budgétaire</label><input id="p-exercice"></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="button" id="save-settings">Enregistrer les paramètres</button>
+        <button class="btn danger" type="button" id="reset-all">Vider toutes les données</button>
+        <button class="btn" type="button" id="load-demo">Recharger l'exemple</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const KEY = 'carbusuivi.v1';
+  const fmt = new Intl.NumberFormat('fr-FR');
+  const money = n => fmt.format(Math.round(n));
+  const pct = n => (Math.round(n * 10) / 10).toLocaleString('fr-FR') + ' %';
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const CARB = { gasoil: 'Gasoil', super: 'Super' };
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+  function demo() {
+    const fournisseurs = [
+      { id: 'F1', nom: 'Fournisseur A', contact: 'Station Zone industrielle', prix: { gasoil: 715, super: 875 } },
+      { id: 'F2', nom: 'Fournisseur B', contact: 'Dépôt Nord', prix: { gasoil: 720, super: 870 } },
+      { id: 'F3', nom: 'Fournisseur C', contact: 'Station Centre-ville', prix: { gasoil: 710, super: 880 } },
+    ];
+    const sources = [
+      { id: 'S1', nom: 'Budget de l\'État', code: 'BGE', budget: 25000000 },
+      { id: 'S2', nom: 'Projet partenaire', code: 'PTF', budget: 9000000 },
+    ];
+    const rows = [
+      ['2026-07-02', 'F1', 'S1', 'gasoil', 2400, 'DG — groupe électrogène'],
+      ['2026-07-09', 'F2', 'S2', 'gasoil', 1500, 'Véhicules de mission projet'],
+      ['2026-07-15', 'F3', 'S1', 'super', 800, 'Parc auto — liaison'],
+      ['2026-07-23', 'F1', 'S2', 'gasoil', 1800, 'Tournée terrain Sud'],
+      ['2026-07-30', 'F2', 'S1', 'gasoil', 3000, 'Engins travaux publics'],
+      ['2026-08-05', 'F3', 'S1', 'gasoil', 2200, 'DG — groupe électrogène'],
+      ['2026-08-12', 'F1', 'S2', 'super', 900, 'Motos agents terrain'],
+      ['2026-08-20', 'F2', 'S2', 'gasoil', 2000, 'Véhicules de mission projet'],
+      ['2026-08-27', 'F1', 'S1', 'gasoil', 2600, 'Engins travaux publics'],
+      ['2026-09-03', 'F3', 'S2', 'gasoil', 2300, 'Tournée terrain Nord'],
+      ['2026-09-10', 'F2', 'S1', 'super', 1100, 'Parc auto — liaison'],
+      ['2026-09-17', 'F1', 'S1', 'gasoil', 3200, 'Engins travaux publics'],
+      ['2026-09-22', 'F3', 'S2', 'gasoil', 1900, 'Véhicules de mission projet'],
+    ];
+    const operations = rows.map(([date, f, s, c, litres, benef], i) => ({
+      id: 'op' + (i + 1), date, fournisseur: f, source: s, carburant: c, litres,
+      prix: fournisseurs.find(x => x.id === f).prix[c],
+      bon: 'BC-2026-' + String(101 + i).padStart(4, '0'), beneficiaire: benef,
+    }));
+    return { exemple: true, seuil: 80, exercice: '2026', fournisseurs, sources, operations };
+  }
+
+  let state;
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+  if (!state || !Array.isArray(state.fournisseurs) || state.fournisseurs.length !== 3 || state.sources?.length !== 2) state = demo();
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* stockage indisponible */ } };
+
+  const F = id => state.fournisseurs.find(f => f.id === id);
+  const S = id => state.sources.find(s => s.id === id);
+  const montant = o => o.litres * o.prix;
+  const engageSur = sid => state.operations.filter(o => o.source === sid).reduce((a, o) => a + montant(o), 0);
+  const colorF = id => `var(--f${id.slice(1)})`;
+  const colorS = id => `var(--s${id.slice(1)})`;
+
+  function toast(msg) {
+    const t = $('#toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 2600);
+  }
+
+  function niveau(taux) {
+    if (taux >= 100) return ['crit', 'Épuisé'];
+    if (taux >= state.seuil) return ['warn', 'Seuil atteint'];
+    return ['ok', 'Disponible'];
+  }
+
+  /* ---------- Tableau de bord ---------- */
+  function renderNotice() {
+    const n = state.operations.length;
+    $('#notice').innerHTML = (state.exemple ? '<span class="tag">Données d\'exemple</span>' : '') +
+      `<span>Exercice ${esc(state.exercice)} · ${n} bon${n > 1 ? 's' : ''} enregistré${n > 1 ? 's' : ''} · seuil d'alerte ${state.seuil} %</span>`;
+  }
+
+  function renderGauges() {
+    $('#gauges').innerHTML = state.sources.map(s => {
+      const ops = state.operations.filter(o => o.source === s.id);
+      const eng = ops.reduce((a, o) => a + montant(o), 0);
+      const litres = ops.reduce((a, o) => a + o.litres, 0);
+      const taux = s.budget ? eng / s.budget * 100 : 0;
+      const [cls, lib] = niveau(taux);
+      const fill = cls === 'ok' ? colorS(s.id) : `var(--${cls})`;
+      return `<article class="gauge">
+        <div class="gauge-head">
+          <h3><span class="dot" style="background:${colorS(s.id)}"></span>${esc(s.nom)} <span class="chip">${esc(s.code)}</span></h3>
+          <span class="pill ${cls}">${lib}</span>
+        </div>
+        <div><div class="label">Reste disponible</div>
+          <div class="big num">${money(Math.max(0, s.budget - eng))}<span class="unit">FCFA</span></div></div>
+        <div class="bar" role="img" aria-label="${pct(taux)} du budget consommé">
+          <span style="width:${Math.min(100, taux)}%;background:${fill}"></span>
+          <i class="tick" style="left:${state.seuil}%"></i>
+        </div>
+        <div class="kv">
+          <div><span class="label">Enveloppe</span><strong>${money(s.budget)}</strong></div>
+          <div><span class="label">Engagé</span><strong>${money(eng)} <span class="sub">${pct(taux)}</span></strong></div>
+          <div><span class="label">Volume</span><strong>${money(litres)} L <span class="sub">${ops.length} bons</span></strong></div>
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  function renderMatrix() {
+    const cell = (ops) => {
+      const m = ops.reduce((a, o) => a + montant(o), 0), l = ops.reduce((a, o) => a + o.litres, 0);
+      return `<td class="r">${m ? money(m) : '—'}<span class="sub">${l ? money(l) + ' L' : ''}</span></td>`;
+    };
+    const total = state.operations.reduce((a, o) => a + montant(o), 0);
+    let h = '<thead><tr><th>Fournisseur</th>' +
+      state.sources.map(s => `<th class="r">${esc(s.code)} · FCFA</th>`).join('') +
+      '<th class="r">Total · FCFA</th><th class="r">Part</th></tr></thead><tbody>';
+    state.fournisseurs.forEach(f => {
+      const ops = state.operations.filter(o => o.fournisseur === f.id);
+      const m = ops.reduce((a, o) => a + montant(o), 0);
+      h += `<tr><td><span class="dot" style="background:${colorF(f.id)}"></span> ${esc(f.nom)}<span class="sub">${esc(f.contact)}</span></td>` +
+        state.sources.map(s => cell(ops.filter(o => o.source === s.id))).join('') +
+        cell(ops) + `<td class="r">${total ? pct(m / total * 100) : '—'}</td></tr>`;
+    });
+    h += '</tbody><tfoot><tr><td>Total</td>' +
+      state.sources.map(s => cell(state.operations.filter(o => o.source === s.id))).join('') +
+      cell(state.operations) + `<td class="r">${total ? '100 %' : '—'}</td></tr></tfoot>`;
+    $('#matrix').innerHTML = h;
+  }
+
+  function renderMonths() {
+    const by = {};
+    state.operations.forEach(o => {
+      const k = o.date.slice(0, 7);
+      by[k] ??= Object.fromEntries(state.sources.map(s => [s.id, 0]));
+      by[k][o.source] += montant(o);
+    });
+    const keys = Object.keys(by).sort();
+    if (!keys.length) { $('#months').innerHTML = '<div class="empty">Aucune dépense enregistrée.</div>'; return; }
+    const max = Math.max(...keys.map(k => Object.values(by[k]).reduce((a, b) => a + b, 0)));
+    $('#months').innerHTML = `<div class="legend">${state.sources.map(s => `<span><i class="dot" style="background:${colorS(s.id)}"></i>${esc(s.nom)}</span>`).join('')}</div>` +
+      keys.map(k => {
+        const [y, m] = k.split('-');
+        const tot = Object.values(by[k]).reduce((a, b) => a + b, 0);
+        return `<div class="mrow"><span class="label">${MOIS[+m - 1]} ${y.slice(2)}</span>
+          <div class="stack">${state.sources.map(s => `<span title="${esc(s.nom)} : ${money(by[k][s.id])} FCFA" style="width:${by[k][s.id] / max * 100}%;background:${colorS(s.id)}"></span>`).join('')}</div>
+          <span class="val">${money(tot)}</span></div>`;
+      }).join('');
+  }
+
+  function renderPrices() {
+    const best = c => Math.min(...state.fournisseurs.map(f => f.prix[c]));
+    $('#prices').innerHTML = '<thead><tr><th>Fournisseur</th><th class="r">Gasoil</th><th class="r">Super</th></tr></thead><tbody>' +
+      state.fournisseurs.map(f => `<tr><td><span class="dot" style="background:${colorF(f.id)}"></span> ${esc(f.nom)}</td>` +
+        ['gasoil', 'super'].map(c => `<td class="r">${money(f.prix[c])}${f.prix[c] === best(c) ? ' <span class="pill ok">moins cher</span>' : ''}</td>`).join('') +
+        '</tr>').join('') + '</tbody>';
+  }
+
+  /* ---------- Approvisionnements ---------- */
+  function fillSelects() {
+    const optF = state.fournisseurs.map(f => `<option value="${f.id}">${esc(f.nom)}</option>`).join('');
+    const optS = state.sources.map(s => `<option value="${s.id}">${esc(s.nom)}</option>`).join('');
+    const keep = (sel, html) => { const v = sel.value; sel.innerHTML = html; if (v && [...sel.options].some(o => o.value === v)) sel.value = v; };
+    keep($('#f-fourn'), optF); keep($('#f-source'), optS);
+    keep($('#flt-fourn'), '<option value="">Tous les fournisseurs</option>' + optF);
+    keep($('#flt-source'), '<option value="">Toutes les sources</option>' + optS);
+  }
+
+  function prixAuto() { $('#f-prix').value = F($('#f-fourn').value).prix[$('#f-carb').value]; calc(); }
+
+  function calc() {
+    const l = +$('#f-litres').value || 0, p = +$('#f-prix').value || 0, t = l * p;
+    const s = S($('#f-source').value);
+    const reste = s.budget - engageSur(s.id);
+    $('#f-total').innerHTML = `${money(t)}<span class="unit">FCFA</span>`;
+    const apres = reste - t;
+    $('#f-reste').innerHTML = `<div class="label">Reste sur ${esc(s.code)}</div>` +
+      `<strong style="color:var(--${apres < 0 ? 'crit' : apres < s.budget * (1 - state.seuil / 100) ? 'warn' : 'ok'})">${money(apres)} FCFA</strong><span class="sub">après ce bon (avant : ${money(reste)})</span>`;
+    return { t, reste, s };
+  }
+
+  function renderOps() {
+    const ff = $('#flt-fourn').value, fs = $('#flt-source').value;
+    const ops = state.operations.filter(o => (!ff || o.fournisseur === ff) && (!fs || o.source === fs))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.bon.localeCompare(a.bon));
+    if (!ops.length) { $('#ops').innerHTML = '<tbody><tr><td class="empty">Aucun bon pour ce filtre.</td></tr></tbody>'; return; }
+    const tl = ops.reduce((a, o) => a + o.litres, 0), tm = ops.reduce((a, o) => a + montant(o), 0);
+    $('#ops').innerHTML = '<thead><tr><th>Date</th><th>N° bon</th><th>Fournisseur</th><th>Source</th><th>Carburant</th><th class="r">Litres</th><th class="r">Prix/L</th><th class="r">Montant FCFA</th><th>Bénéficiaire</th><th></th></tr></thead><tbody>' +
+      ops.map(o => `<tr>
+        <td>${o.date.split('-').reverse().join('/')}</td><td class="mono">${esc(o.bon)}</td>
+        <td><span class="dot" style="background:${colorF(o.fournisseur)}"></span> ${esc(F(o.fournisseur)?.nom)}</td>
+        <td><span class="chip" style="color:${colorS(o.source)}">${esc(S(o.source)?.code)}</span></td>
+        <td>${CARB[o.carburant]}</td><td class="r">${money(o.litres)}</td><td class="r">${money(o.prix)}</td>
+        <td class="r">${money(montant(o))}</td><td>${esc(o.beneficiaire)}</td>
+        <td><button class="btn small danger" data-del="${o.id}" type="button">Supprimer</button></td></tr>`).join('') +
+      `</tbody><tfoot><tr><td colspan="5">${ops.length} bon${ops.length > 1 ? 's' : ''}</td><td class="r">${money(tl)}</td><td></td><td class="r">${money(tm)}</td><td colspan="2"></td></tr></tfoot>`;
+  }
+
+  /* ---------- Paramètres ---------- */
+  function renderSettings() {
+    $('#set-fourn').innerHTML = state.fournisseurs.map(f => `<div class="srow">
+      <div class="label"><span class="dot" style="background:${colorF(f.id)}"></span> ${f.id}</div>
+      <div class="grid">
+        <div class="field"><label for="n-${f.id}">Nom</label><input id="n-${f.id}" value="${esc(f.nom)}"></div>
+        <div class="field"><label for="c-${f.id}">Adresse / contact</label><input id="c-${f.id}" value="${esc(f.contact)}"></div>
+        <div class="field"><label for="pg-${f.id}">Gasoil FCFA/L</label><input type="number" min="1" id="pg-${f.id}" value="${f.prix.gasoil}"></div>
+        <div class="field"><label for="ps-${f.id}">Super FCFA/L</label><input type="number" min="1" id="ps-${f.id}" value="${f.prix.super}"></div>
+      </div></div>`).join('');
+    $('#set-source').innerHTML = state.sources.map(s => `<div class="srow">
+      <div class="label"><span class="dot" style="background:${colorS(s.id)}"></span> ${s.id}</div>
+      <div class="grid">
+        <div class="field"><label for="sn-${s.id}">Intitulé</label><input id="sn-${s.id}" value="${esc(s.nom)}"></div>
+        <div class="field"><label for="sc-${s.id}">Code</label><input id="sc-${s.id}" value="${esc(s.code)}" maxlength="6"></div>
+        <div class="field"><label for="sb-${s.id}">Enveloppe FCFA</label><input type="number" min="0" id="sb-${s.id}" value="${s.budget}"></div>
+      </div></div>`).join('');
+    $('#p-seuil').value = state.seuil;
+    $('#p-exercice').value = state.exercice;
+  }
+
+  function renderAll() {
+    renderNotice(); renderGauges(); renderMatrix(); renderMonths(); renderPrices();
+    fillSelects(); renderOps(); renderSettings(); calc();
+  }
+
+  /* ---------- Événements ---------- */
+  document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
+  function show(v) {
+    document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === v));
+    ['bord', 'appro', 'param'].forEach(x => ($('#view-' + x).hidden = x !== v));
+    try { localStorage.setItem(KEY + '.tab', v); } catch (e) {}
+  }
+
+  $('#f-fourn').addEventListener('change', prixAuto);
+  $('#f-carb').addEventListener('change', prixAuto);
+  $('#f-source').addEventListener('change', calc);
+  $('#f-litres').addEventListener('input', calc);
+  $('#f-prix').addEventListener('input', calc);
+  $('#flt-fourn').addEventListener('change', renderOps);
+  $('#flt-source').addEventListener('change', renderOps);
+
+  function nextBon() {
+    const n = state.operations.map(o => +(o.bon.match(/(\d+)$/) || [0, 0])[1]).reduce((a, b) => Math.max(a, b), 0);
+    return `BC-${state.exercice}-${String(n + 1).padStart(4, '0')}`;
+  }
+  function resetForm() {
+    $('#f-date').value = new Date().toISOString().slice(0, 10);
+    $('#f-bon').value = nextBon(); $('#f-litres').value = ''; $('#f-benef').value = '';
+    prixAuto();
+  }
+
+  $('#form').addEventListener('reset', e => { e.preventDefault(); resetForm(); $('#f-msg').textContent = ''; });
+  $('#form').addEventListener('submit', e => {
+    e.preventDefault();
+    const msg = $('#f-msg'); msg.className = 'msg crit';
+    const litres = Math.round(+$('#f-litres').value), prix = Math.round(+$('#f-prix').value);
+    const bon = $('#f-bon').value.trim(), date = $('#f-date').value;
+    if (!date) return (msg.textContent = 'Indiquez la date de livraison.');
+    if (!bon) return (msg.textContent = 'Indiquez le numéro du bon.');
+    if (state.operations.some(o => o.bon === bon)) return (msg.textContent = `Le bon ${bon} existe déjà : utilisez un autre numéro.`);
+    if (!(litres > 0)) return (msg.textContent = 'La quantité doit être supérieure à 0 litre.');
+    if (!(prix > 0)) return (msg.textContent = 'Le prix unitaire doit être supérieur à 0 FCFA.');
+    const { t, reste, s } = calc();
+    if (t > reste) return (msg.textContent = `Budget insuffisant sur « ${s.nom} » : il reste ${money(reste)} FCFA pour un bon de ${money(t)} FCFA. Réduisez la quantité ou imputez sur l'autre source.`);
+    if (state.exemple) { state.exemple = false; }
+    state.operations.push({
+      id: 'op' + Date.now(), date, bon, litres, prix,
+      fournisseur: $('#f-fourn').value, source: s.id, carburant: $('#f-carb').value,
+      beneficiaire: $('#f-benef').value.trim(),
+    });
+    save(); renderAll(); resetForm();
+    msg.className = 'msg ok'; msg.textContent = `Bon ${bon} enregistré : ${money(t)} FCFA imputés sur ${s.nom}.`;
+  });
+
+  $('#ops').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if (!b) return;
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed'); b.textContent = 'Confirmer ?';
+      setTimeout(() => { if (b.isConnected) { b.classList.remove('armed'); b.textContent = 'Supprimer'; } }, 3000);
+      return;
+    }
+    const op = state.operations.find(o => o.id === b.dataset.del);
+    state.operations = state.operations.filter(o => o.id !== b.dataset.del);
+    save(); renderAll(); toast(`Bon ${op?.bon ?? ''} supprimé`);
+  });
+
+  $('#csv').addEventListener('click', () => {
+    const head = ['Date', 'N° bon', 'Fournisseur', 'Source', 'Carburant', 'Litres', 'Prix FCFA/L', 'Montant FCFA', 'Bénéficiaire'];
+    const q = v => `"${String(v).replace(/"/g, '""')}"`;
+    const lines = [head.map(q).join(';')].concat(state.operations.map(o =>
+      [o.date, o.bon, F(o.fournisseur)?.nom, S(o.source)?.nom, CARB[o.carburant], o.litres, o.prix, montant(o), o.beneficiaire].map(q).join(';')));
+    const text = lines.join('\n');
+    const fallback = () => {
+      const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('aria-label', 'Export CSV');
+      ta.style.cssText = 'width:100%;height:160px;margin-top:12px;font:12px var(--mono)';
+      $('#ops').parentElement.after(ta); ta.select(); toast('Sélectionnez le texte puis copiez-le');
+    };
+    try { navigator.clipboard.writeText(text).then(() => toast(`${state.operations.length} lignes copiées — collez-les dans Excel`), fallback); }
+    catch (err) { fallback(); }
+  });
+
+  $('#save-settings').addEventListener('click', () => {
+    const v = id => $('#' + id).value.trim();
+    for (const f of state.fournisseurs) {
+      const g = Math.round(+v('pg-' + f.id)), s = Math.round(+v('ps-' + f.id));
+      if (!v('n-' + f.id) || !(g > 0) || !(s > 0)) return toast(`${f.id} : nom et prix positifs obligatoires`);
+    }
+    for (const s of state.sources) {
+      if (!v('sn-' + s.id) || !v('sc-' + s.id) || !(+v('sb-' + s.id) >= 0)) return toast(`${s.id} : intitulé, code et enveloppe obligatoires`);
+    }
+    const seuil = Math.round(+v('p-seuil'));
+    if (!(seuil >= 1 && seuil <= 100)) return toast('Le seuil doit être compris entre 1 et 100 %');
+    state.fournisseurs.forEach(f => {
+      f.nom = v('n-' + f.id); f.contact = v('c-' + f.id);
+      f.prix = { gasoil: Math.round(+v('pg-' + f.id)), super: Math.round(+v('ps-' + f.id)) };
+    });
+    state.sources.forEach(s => { s.nom = v('sn-' + s.id); s.code = v('sc-' + s.id).toUpperCase(); s.budget = Math.round(+v('sb-' + s.id)); });
+    state.seuil = seuil; state.exercice = v('p-exercice') || state.exercice;
+    save(); renderAll(); prixAuto(); toast('Paramètres enregistrés');
+  });
+
+  $('#reset-all').addEventListener('click', e => {
+    const b = e.currentTarget;
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed'); b.textContent = 'Confirmer : tout supprimer';
+      setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Vider toutes les données'; }, 4000);
+      return;
+    }
+    b.classList.remove('armed'); b.textContent = 'Vider toutes les données';
+    state.operations = []; state.exemple = false; save(); renderAll(); resetForm(); toast('Tous les bons ont été supprimés');
+  });
+  $('#load-demo').addEventListener('click', () => { state = demo(); save(); renderAll(); resetForm(); toast('Données d\'exemple rechargées'); });
+
+  renderAll(); resetForm();
+  let tab = 'bord'; try { tab = localStorage.getItem(KEY + '.tab') || 'bord'; } catch (e) {}
+  if (['bord', 'appro', 'param'].includes(tab)) show(tab);
+})();
+</script>
+</body>
+</html>
