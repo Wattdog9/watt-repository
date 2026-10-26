@@ -27,6 +27,42 @@ Chaque acteur dispose de **5 jours ouvrables** (modifiable dans les Paramètres)
 
 Les durées sont comptées en jours ouvrables, du lendemain de la réception jusqu'au jour de sortie inclus, sans les week-ends ni les jours fériés déclarés.
 
-## Utilisation
+## Installation sur un serveur (données partagées)
+
+Le serveur permet au secrétariat de la DE, au Contrôle financier et à l'Agent comptable de travailler sur les **mêmes dossiers**, depuis plusieurs postes.
+
+Prérequis : [Node.js](https://nodejs.org) version 18 ou plus récente, installé sur un ordinateur du bureau allumé pendant les heures de travail, ou sur un serveur. Aucun module à installer.
+
+```bash
+cd suivi-dossiers-prseb
+MOT_DE_PASSE="choisissez-un-mot-de-passe" node server.js
+```
+
+Sous Windows (PowerShell) :
+
+```powershell
+cd suivi-dossiers-prseb
+$env:MOT_DE_PASSE = "choisissez-un-mot-de-passe"
+node server.js
+```
+
+Les collègues ouvrent ensuite `http://ADRESSE-IP-DU-SERVEUR:3000` dans leur navigateur, saisissent leur nom et le mot de passe commun. Le nom de la personne est enregistré sur chaque transmission et chaque décision.
+
+| Variable | Rôle | Par défaut |
+|---|---|---|
+| `MOT_DE_PASSE` | Mot de passe commun demandé à la connexion. Sans lui, toute personne du réseau peut accéder aux données. | aucun |
+| `PORT` | Port d'écoute | `3000` |
+| `HOTE` | Adresse d'écoute | `0.0.0.0` (tout le réseau local) |
+| `DOSSIER_DONNEES` | Dossier où sont stockées les données | `./donnees` |
+
+Fonctionnement :
+
+- Les données sont stockées dans `donnees/donnees.json`. Une copie est faite chaque jour dans `donnees/sauvegardes/`, et les 60 dernières sont conservées. Copiez régulièrement ce dossier sur un autre support.
+- Les écrans se mettent à jour automatiquement (toutes les 15 secondes) quand un collègue enregistre une modification.
+- Si deux personnes modifient le même dossier en même temps, la seconde est prévenue, les données sont rechargées et elle peut recommencer : aucune saisie n'écrase celle d'un autre.
+- Pour reprendre des dossiers saisis avant l'installation du serveur : sur l'ancien poste, ouvrez Paramètres puis « Exporter une sauvegarde » ; sur le serveur, ouvrez Paramètres puis « Importer une sauvegarde ».
+- Pour un accès depuis Internet (et non le seul réseau du bureau), placez le serveur derrière un serveur web en HTTPS (Nginx, Caddy, IIS…), afin que le mot de passe ne circule pas en clair.
+
+## Utilisation sans serveur
 
 Ouvrir `index.html` dans un navigateur. Les données sont enregistrées dans le navigateur (localStorage) : faire des sauvegardes JSON régulières depuis les Paramètres. Des dossiers d'exemple s'affichent au premier lancement ; le bouton « Supprimer les exemples » les retire.

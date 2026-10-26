@@ -71,7 +71,7 @@ header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; b
 .brand h1 { font-size: 1.35rem; }
 .brand small { display: block; color: var(--muted); font-size: .78rem; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
 nav.tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
-nav.tabs button { background: none; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: .9rem; }
+nav.tabs button { background: none; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: .9rem; }
 nav.tabs button:hover { background: var(--surface-2); color: var(--ink); }
 nav.tabs button[aria-current="page"] { color: var(--accent); background: var(--surface-2); }
 
@@ -213,6 +213,9 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 .radio-row label:has(input:checked) { border-color: var(--accent); background: var(--surface-2); }
 .confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; background: var(--bad-bg); border-radius: 8px; font-size: .9rem; }
 
+.session { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; }
+.session .lien { background: none; border: 0; padding: 4px 6px; color: var(--accent); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
+@media (max-width: 1320px) { .brand small { display: none; } }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -235,6 +238,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       <button data-tab="rapports">Rapports</button>
       <button data-tab="parametres">Paramètres</button>
     </nav>
+    <div class="session" id="session"></div>
     <button class="btn primary" id="btn-nouveau">+ Nouveau dossier</button>
   </div>
 </header>
@@ -338,6 +342,73 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     cacheFeries = null;
     try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) { /* stockage indisponible */ }
   }
+  // ---------- Serveur partagé ----------
+  // Si la page est servie par server.js, les données sont partagées via l'API ;
+  // sinon (fichier ouvert directement), elles restent dans ce navigateur.
+  var srv = { actif: false, jeton: null, nom: null, motDePasseRequis: false, revision: 0 };
+  var CLE_SESSION = "prseb-session-v1";
+
+  function appel(methode, url, corps) {
+    var entetes = { "Content-Type": "application/json" };
+    if (srv.jeton) entetes.Authorization = "Bearer " + srv.jeton;
+    return fetch(url, { method: methode, headers: entetes, body: corps ? JSON.stringify(corps) : undefined }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok) return j;
+        if (r.status === 401 && url !== "/api/connexion") oublierSession();
+        var e = new Error(j.erreur || "Erreur du serveur (" + r.status + ")."); e.status = r.status;
+        throw e;
+      });
+    }, function () { throw new Error("Serveur injoignable. Vérifiez la connexion au réseau puis réessayez."); });
+  }
+  function oublierSession() {
+    srv.jeton = null; srv.nom = null;
+    try { localStorage.removeItem(CLE_SESSION); } catch (e) { /* ignore */ }
+    fermerDlg(); render();
+  }
+  function appliquerEtat(o) {
+    etat.dossiers = o.dossiers || [];
+    etat.params = Object.assign({}, defautParams, o.params || {});
+    etat.params.delais = Object.assign({}, defautParams.delais, (o.params || {}).delais || {});
+    srv.revision = o.revision || 0;
+    cacheFeries = null;
+  }
+  function rechargerServeur() { return appel("GET", "/api/etat").then(appliquerEtat); }
+
+  function persister(op) {
+    if (!srv.actif) { sauver(); return Promise.resolve(); }
+    var d = op.d, p;
+    if (op.type === "creer") p = appel("POST", "/api/dossiers", { dossier: d });
+    else if (op.type === "maj") p = appel("PUT", "/api/dossiers/" + encodeURIComponent(d.id), { dossier: d, version: d.version || 0 });
+    else if (op.type === "suppr") p = appel("DELETE", "/api/dossiers/" + encodeURIComponent(d.id));
+    else if (op.type === "params") p = appel("PUT", "/api/params", { params: etat.params });
+    else if (op.type === "exemples") p = appel("DELETE", "/api/exemples");
+    else p = appel("POST", "/api/import", { dossiers: etat.dossiers, params: etat.params });
+    return p.then(function (r) {
+      if (r.dossiers) { appliquerEtat(r); return; }
+      if (r.dossier) {
+        var i = etat.dossiers.findIndex(function (x) { return x.id === r.dossier.id; });
+        if (i >= 0) etat.dossiers[i] = r.dossier; else etat.dossiers.push(r.dossier);
+      }
+      if (r.params) { etat.params = r.params; cacheFeries = null; }
+      if (r.revision) srv.revision = r.revision;
+    }, function (e) {
+      // En cas d'échec, on revient à l'état du serveur pour ne pas afficher de modification non enregistrée.
+      return rechargerServeur().catch(function () { /* ignore */ }).then(function () { throw e; });
+    });
+  }
+
+  // Enregistre puis rafraîchit l'écran ; id : dossier à rouvrir dans la fenêtre.
+  function valider(op, id, msg) {
+    dlg.querySelectorAll("button, input, select, textarea").forEach(function (b) { b.disabled = true; });
+    return persister(op).then(function () {
+      render(); if (id) detail(id); if (msg) toast(msg);
+    }, function (e) {
+      render();
+      if (id && trouver(id) && dlg.open) detail(id); else if (op.type !== "params") fermerDlg();
+      toast(e.message);
+    });
+  }
+
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
   // ---------- Règles de gestion ----------
@@ -435,6 +506,12 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   var app = document.getElementById("app");
 
   function render() {
+    var zs = document.getElementById("session");
+    zs.innerHTML = !srv.actif ? '<span class="muted">Données locales</span>' : srv.jeton ? '<span>' + h(srv.nom) + '</span><button class="lien" id="btn-deco">Déconnexion</button>' : "";
+    var connecte = !srv.actif || !!srv.jeton;
+    document.querySelector("nav.tabs").hidden = !connecte;
+    document.getElementById("btn-nouveau").hidden = !connecte;
+    if (!connecte) { app.innerHTML = vueConnexion(); return; }
     document.querySelectorAll("nav.tabs button").forEach(function (b) {
       if (b.dataset.tab === ui.onglet) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
@@ -447,6 +524,16 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     else if (ui.onglet === "rapports") html += vueRapports();
     else html += vueParametres();
     app.innerHTML = html;
+  }
+
+  function vueConnexion() {
+    var nom = "";
+    try { nom = localStorage.getItem(CLE_SESSION + "-nom") || ""; } catch (e) { /* ignore */ }
+    return '<section class="panel" style="max-width:440px;margin:40px auto 0;width:100%"><form id="form-connexion" style="display:grid;gap:14px"><h2>Connexion</h2>' +
+      '<p class="help" style="margin:0">Les dossiers sont partagés entre la Direction exécutive, le Contrôle financier et l\'Agent comptable. Votre nom sera associé aux décisions que vous enregistrez.</p>' +
+      '<div class="field"><label class="label" for="c-nom">Votre nom</label><input type="text" id="c-nom" required autocomplete="name" value="' + h(nom) + '" placeholder="Ex. A. Koné, secrétariat DE"></div>' +
+      (srv.motDePasseRequis ? '<div class="field"><label class="label" for="c-mdp">Mot de passe de l\'application</label><input type="password" id="c-mdp" required autocomplete="current-password"></div>' : "") +
+      '<p class="err" id="c-err" hidden></p><button class="btn primary" type="submit">Se connecter</button></form></section>';
   }
 
   function enCours() { return etat.dossiers.filter(function (d) { return d.statut === "en_cours"; }); }
@@ -614,7 +701,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     html += '<div class="field full"><label class="label" for="p-feries">Jours fériés</label><textarea id="p-feries" rows="6">' + h(p.feries) + '</textarea><span class="help">Un jour par ligne. <span class="mono">MM-JJ</span> pour un jour férié fixe chaque année (ex. <span class="mono">12-25</span>), <span class="mono">AAAA-MM-JJ</span> pour une date précise (Pâques, Tabaski, Maouloud…). Ces jours ne sont pas décomptés.</span></div>';
     html += '<div class="actions field full"><button class="btn primary" type="submit">Enregistrer les paramètres</button></div></form></section>';
 
-    html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.</p>' +
+    html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">' + (srv.actif ? "Les données sont partagées sur le serveur, qui en garde une copie chaque jour. Vous pouvez aussi exporter une sauvegarde ou importer celle d\'un poste utilisé auparavant ; l\'import remplace toutes les données du serveur." : "Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.") + '</p>' +
       '<div class="filters"><button class="btn" data-act="export-json">Exporter une sauvegarde (JSON)</button><label class="btn" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button></div>' +
       '<div id="zone-export"></div><div id="zone-reset"></div></section>';
     return html;
@@ -650,7 +737,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (!d) { fermerDlg(); return; }
     var c = courante(d);
     var html = '<div class="dlg" data-id="' + d.id + '"><div class="dlg-head"><div><span class="label">' + h(d.nature) + '</span><h2><span class="mono" style="font-size:1.1rem">' + h(d.ref) + "</span><br>" + h(d.objet) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>';
-    html += '<div class="meta"><div><div class="label">Bénéficiaire</div>' + h(d.beneficiaire || "—") + '</div><div><div class="label">Montant</div><span class="num">' + h(fm(d.montant)) + '</span></div><div><div class="label">Position</div>' + chipPos(d) + '</div><div><div class="label">Durée totale</div><span class="num">' + dureeTotale(d) + " j ouvrables</span></div></div>";
+    html += '<div class="meta"><div><div class="label">Bénéficiaire</div>' + h(d.beneficiaire || "—") + '</div><div><div class="label">Montant</div><span class="num">' + h(fm(d.montant)) + '</span></div><div><div class="label">Position</div>' + chipPos(d) + '</div><div><div class="label">Durée totale</div><span class="num">' + dureeTotale(d) + " j ouvrables</span></div>" +
+      (d.modifiePar ? '<div><div class="label">Dernière mise à jour</div>' + h(d.modifiePar) + ' <span class="muted" style="font-size:.82rem">' + h(fd(d.modifieLe.slice(0, 10))) + "</span></div>" : "") + "</div>";
 
     // Action
     if (d.statut === "en_cours" && c) {
@@ -667,7 +755,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
         html += '<div class="field"><label class="label" for="a-motif">Motif / observations (obligatoire si différé ou rejeté)</label><textarea id="a-motif" rows="2"></textarea></div>';
       }
       html += '<div class="form-grid"><div class="field"><label class="label" for="a-date">' + (c.acteur === "DE" ? "Date de transmission" : "Date de retour du dossier") + '</label><input type="date" id="a-date" required min="' + c.debut + '" max="' + aujourdhui() + '" value="' + aujourdhui() + '"></div></div>';
-      html += '<p class="err" id="a-err" hidden></p><div class="actions"><button class="btn primary" type="submit">' + (c.acteur === "DE" ? "Transmettre au " + (visaValide(d) ? "Agent comptable" : "Contrôle financier") : "Enregistrer la décision") + "</button></div></form>";
+      html += '<p class="err" id="a-err" hidden></p><div class="actions"><button class="btn primary" type="submit">' + (c.acteur === "DE" ? "Transmettre " + (visaValide(d) ? "à l'Agent comptable" : "au Contrôle financier") : "Enregistrer la décision") + "</button></div></form>";
     } else if (d.statut === "rejete") {
       html += '<div class="action-box"><p style="margin:0">Dossier rejeté. S\'il est repris après correction, il repart de la Direction exécutive et devra de nouveau être visé par le CF.</p><div class="actions"><button class="btn" data-act="reprendre">Reprendre le dossier</button></div></div>';
     }
@@ -679,7 +767,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       html += '<li style="--c:' + ACTEURS[e.acteur].couleur + '"><div class="rail"><span class="dot"></span></div><div class="body"><div class="row1"><strong>' + ACTEURS[e.acteur].nom + "</strong>" +
         (e.decision ? stamp(e.decision) + (e.decision === "transmis" && e.vers ? ' <span class="muted" style="font-size:.82rem">vers ' + e.vers + "</span>" : "") : '<span class="chip ' + e.acteur + '"><i></i>En cours</span>') +
         '<span class="num" style="font-size:.85rem;' + (n > lim ? "color:var(--bad);font-weight:600" : "") + '">' + n + " / " + lim + " j</span></div>" +
-        '<div class="muted" style="font-size:.85rem">Reçu le ' + h(fd(e.debut)) + (e.fin ? " · sorti le " + h(fd(e.fin)) : " · toujours en attente") + (e.reprise ? " · reprise après rejet" : "") + "</div>" +
+        '<div class="muted" style="font-size:.85rem">Reçu le ' + h(fd(e.debut)) + (e.fin ? " · sorti le " + h(fd(e.fin)) : " · toujours en attente") + (e.reprise ? " · reprise après rejet" : "") + (e.par ? " · par " + h(e.par) : "") + "</div>" +
         (e.motif ? '<div class="motif">' + h(e.motif) + "</div>" : "") + "</div></li>";
     });
     html += "</ol></div>";
@@ -707,26 +795,26 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (date > aujourdhui()) return erreur("La date ne peut pas être dans le futur.");
     if ((dec === "differe" || dec === "rejete") && !motif) return erreur("Précisez le motif du " + (dec === "differe" ? "différé" : "rejet") + ".");
     c.fin = date; c.decision = dec; c.motif = motif;
+    if (srv.nom) c.par = srv.nom;
     if (c.acteur === "DE") {
       c.vers = document.getElementById("a-vers").value;
       d.etapes.push({ acteur: c.vers, debut: date, fin: null, decision: null, motif: "" });
     } else if (dec === "paye") { d.statut = "paye"; }
     else if (dec === "rejete") { d.statut = "rejete"; }
     else { d.etapes.push({ acteur: "DE", debut: date, fin: null, decision: null, motif: "" }); }
-    sauver(); render(); detail(d.id);
-    toast(c.acteur === "DE" ? "Dossier transmis au " + ACTEURS[c.vers].nom + "." : "Décision enregistrée : " + DECISIONS[dec].toLowerCase() + ".");
+    valider({ type: "maj", d: d }, d.id, c.acteur === "DE" ? "Dossier transmis " + (c.vers === "AC" ? "à l'" : "au ") + ACTEURS[c.vers].nom + "." : "Décision enregistrée : " + DECISIONS[dec].toLowerCase() + ".");
   }
 
   function annulerDerniere(d) {
     var last = d.etapes[d.etapes.length - 1];
-    if (d.statut !== "en_cours") { last.fin = null; last.decision = null; last.motif = ""; d.statut = "en_cours"; }
+    if (d.statut !== "en_cours") { last.fin = null; last.decision = null; last.motif = ""; delete last.par; d.statut = "en_cours"; }
     else if (d.etapes.length > 1) {
       var retire = d.etapes.pop();
       var p = d.etapes[d.etapes.length - 1];
-      if (retire.reprise) { d.statut = "rejete"; sauver(); render(); detail(d.id); toast("Reprise annulée."); return; }
-      p.fin = null; p.decision = null; p.motif = ""; delete p.vers;
+      if (retire.reprise) { d.statut = "rejete"; valider({ type: "maj", d: d }, d.id, "Reprise annulée."); return; }
+      p.fin = null; p.decision = null; p.motif = ""; delete p.vers; delete p.par;
     } else return;
-    sauver(); render(); detail(d.id); toast("Dernière action annulée.");
+    valider({ type: "maj", d: d }, d.id, "Dernière action annulée.");
   }
 
   // ---------- Exports ----------
@@ -767,16 +855,16 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     var act = ev.target.closest("[data-act]");
     if (act) {
       var a = act.dataset.act;
-      if (a === "vider-exemples") { etat.dossiers = etat.dossiers.filter(function (d) { return !d.exemple; }); sauver(); render(); toast("Exemples supprimés."); }
+      if (a === "vider-exemples") { etat.dossiers = etat.dossiers.filter(function (d) { return !d.exemple; }); valider({ type: "exemples" }, null, "Exemples supprimés."); }
       else if (a === "export-csv") { telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".csv", csv(), "text/csv;charset=utf-8"); toast("Export CSV généré."); }
       else if (a === "export-json") {
-        var json = JSON.stringify(etat, null, 2);
+        var json = JSON.stringify({ dossiers: etat.dossiers, params: etat.params }, null, 2);
         telecharger("sauvegarde-prseb-" + aujourdhui() + ".json", json, "application/json");
         document.getElementById("zone-export").innerHTML = '<div class="field" style="margin-top:12px"><label class="label" for="json-out">Si le téléchargement n\'a pas démarré, copiez ce texte dans un fichier .json</label><textarea id="json-out" rows="6" readonly class="mono" style="font-size:.78rem">' + h(json) + "</textarea></div>";
       }
-      else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers enregistrés dans ce navigateur ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
+      else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers ' + (srv.actif ? "du serveur, pour tous les utilisateurs" : "enregistrés dans ce navigateur") + ' ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
       else if (a === "no-reset") { document.getElementById("zone-reset").innerHTML = ""; }
-      else if (a === "reset") { etat.dossiers = []; sauver(); render(); toast("Toutes les données ont été effacées."); }
+      else if (a === "reset") { etat.dossiers = []; valider({ type: "tout" }, null, "Toutes les données ont été effacées."); }
       return;
     }
     var pos = ev.target.closest("[data-pos]");
@@ -803,19 +891,31 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
           if (!o || !Array.isArray(o.dossiers)) throw new Error();
           etat.dossiers = o.dossiers;
           etat.params = Object.assign({}, defautParams, o.params || {});
-          sauver(); render(); toast(o.dossiers.length + " dossier(s) importé(s).");
+          valider({ type: "tout" }, null, o.dossiers.length + " dossier(s) importé(s).");
         } catch (e) { toast("Ce fichier n'est pas une sauvegarde valide de l'application."); }
       };
       r.readAsText(t.files[0]);
     }
   });
   app.addEventListener("submit", function (ev) {
+    if (ev.target.id === "form-connexion") {
+      ev.preventDefault();
+      var nom = document.getElementById("c-nom").value.trim(), mdp = document.getElementById("c-mdp");
+      var err = document.getElementById("c-err"), btn = ev.target.querySelector("button");
+      btn.disabled = true;
+      appel("POST", "/api/connexion", { nom: nom, motDePasse: mdp ? mdp.value : "" }).then(function (r) {
+        srv.jeton = r.jeton; srv.nom = r.nom;
+        try { localStorage.setItem(CLE_SESSION, JSON.stringify(r)); localStorage.setItem(CLE_SESSION + "-nom", r.nom); } catch (e) { /* ignore */ }
+        return rechargerServeur();
+      }).then(function () { render(); }, function (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; });
+      return;
+    }
     if (ev.target.id !== "form-params") return;
     ev.preventDefault();
     ["DE", "CF", "AC"].forEach(function (a) { var v = parseInt(document.getElementById("p-" + a).value, 10); etat.params.delais[a] = v > 0 ? v : 5; });
     etat.params.devise = document.getElementById("p-devise").value.trim() || "FCFA";
     etat.params.feries = document.getElementById("p-feries").value;
-    sauver(); render(); toast("Paramètres enregistrés.");
+    valider({ type: "params" }, null, "Paramètres enregistrés.");
   });
 
   dlg.addEventListener("click", function (ev) {
@@ -826,12 +926,12 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     else if (a === "modifier") formDossier(d);
     else if (a === "ask-suppr") detail(d.id, "suppr");
     else if (a === "detail") detail(d.id);
-    else if (a === "suppr") { etat.dossiers = etat.dossiers.filter(function (x) { return x !== d; }); sauver(); fermerDlg(); render(); toast("Dossier " + d.ref + " supprimé."); }
+    else if (a === "suppr") { etat.dossiers = etat.dossiers.filter(function (x) { return x !== d; }); fermerDlg(); valider({ type: "suppr", d: d }, null, "Dossier " + d.ref + " supprimé."); }
     else if (a === "annuler-derniere") annulerDerniere(d);
     else if (a === "reprendre") {
       var last = d.etapes[d.etapes.length - 1];
       d.etapes.push({ acteur: "DE", debut: last.fin || aujourdhui(), fin: null, decision: null, motif: "", reprise: true });
-      d.statut = "en_cours"; sauver(); render(); detail(d.id); toast("Dossier repris à la Direction exécutive.");
+      d.statut = "en_cours"; valider({ type: "maj", d: d }, d.id, "Dossier repris à la Direction exécutive.");
     }
   });
   dlg.addEventListener("submit", function (ev) {
@@ -844,18 +944,50 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (etat.dossiers.some(function (x) { return x.ref === ref && x.id !== id; })) { err.textContent = "La référence " + ref + " existe déjà."; err.hidden = false; return; }
     var m = document.getElementById("d-montant").value;
     var champs = { ref: ref, objet: objet, beneficiaire: document.getElementById("d-benef").value.trim(), montant: m === "" ? "" : +m, nature: document.getElementById("d-nature").value };
-    if (id) { Object.assign(trouver(id), champs); sauver(); render(); detail(id); toast("Dossier modifié."); return; }
+    if (id) { Object.assign(trouver(id), champs); valider({ type: "maj", d: trouver(id) }, id, "Dossier modifié."); return; }
     var date = document.getElementById("d-date").value || aujourdhui();
     if (date > aujourdhui()) { err.textContent = "La date d'arrivée ne peut pas être dans le futur."; err.hidden = false; return; }
     var d = Object.assign({ id: uid(), dateArrivee: date, statut: "en_cours", etapes: [{ acteur: "DE", debut: date, fin: null, decision: null, motif: "" }] }, champs);
-    etat.dossiers.push(d); sauver(); ui.onglet = "dossiers"; render(); detail(d.id); toast("Dossier " + ref + " enregistré.");
+    etat.dossiers.push(d); ui.onglet = "dossiers"; valider({ type: "creer", d: d }, d.id, "Dossier " + ref + " enregistré.");
   });
 
   // ---------- Démarrage ----------
-  charger();
+  document.getElementById("session").addEventListener("click", function (ev) {
+    if (ev.target.id !== "btn-deco") return;
+    appel("POST", "/api/deconnexion").catch(function () { /* ignore */ });
+    oublierSession();
+  });
+
+  // Rafraîchit les données quand un collègue a enregistré une modification.
+  function surveiller() {
+    if (!srv.actif || !srv.jeton || document.hidden) return;
+    appel("GET", "/api/revision").then(function (r) {
+      if (r.revision === srv.revision) return;
+      return rechargerServeur().then(function () {
+        var actif = document.activeElement;
+        if (actif && app.contains(actif) && /INPUT|TEXTAREA|SELECT/.test(actif.tagName)) return;
+        render();
+      });
+    }).catch(function () { /* nouvel essai au prochain passage */ });
+  }
+
   var hash = (location.hash || "").slice(1);
   if (["tableau", "dossiers", "rapports", "parametres"].indexOf(hash) >= 0) ui.onglet = hash;
-  render();
+
+  function demarrerLocal() { charger(); render(); }
+  if (/^https?:$/.test(location.protocol)) {
+    fetch("/api/config").then(function (r) {
+      if (!r.ok || (r.headers.get("Content-Type") || "").indexOf("json") < 0) throw new Error();
+      return r.json();
+    }).then(function (cfg) {
+      srv.actif = true; srv.motDePasseRequis = !!cfg.motDePasseRequis;
+      try { var s = JSON.parse(localStorage.getItem(CLE_SESSION) || "null"); if (s) { srv.jeton = s.jeton; srv.nom = s.nom; } } catch (e) { /* ignore */ }
+      setInterval(surveiller, 15000);
+      document.addEventListener("visibilitychange", surveiller);
+      if (!srv.jeton) { render(); return; }
+      return rechargerServeur().then(render, function (e) { render(); toast(e.message); });
+    }).catch(demarrerLocal);
+  } else demarrerLocal();
 })();
 </script>
 </body>
