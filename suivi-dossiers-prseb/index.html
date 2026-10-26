@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suivi des dossiers PRSEB</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : bandeau d'en-tête + circuit du dossier (DE → CF → DE → AC), puis tableaux de travail sur une colonne de 1200px */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-2: #eef1f6;
+  --ink: #17233a;
+  --muted: #5d6a80;
+  --line: #d6dce6;
+  --accent: #1f4f8f;
+  --accent-ink: #ffffff;
+  --de: #5a4a9c;
+  --cf: #a8610f;
+  --ac: #127065;
+  --ok: #1d7a3e;
+  --warn: #b07500;
+  --bad: #b3261e;
+  --ok-bg: #e5f3ea;
+  --warn-bg: #fbf0d9;
+  --bad-bg: #fbe6e4;
+  --shadow: 0 1px 2px rgba(23,35,58,.06), 0 4px 16px rgba(23,35,58,.06);
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1522; --surface: #172033; --surface-2: #1e2940; --ink: #e6ebf4; --muted: #9aa6bb; --line: #2c3953;
+    --accent: #7fa8e6; --accent-ink: #0f1522; --de: #a99ae6; --cf: #e3a356; --ac: #4fc2b1;
+    --ok: #5fcb84; --warn: #e8b64c; --bad: #f08079; --ok-bg: #173325; --warn-bg: #3a2e12; --bad-bg: #3d1c1c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1522; --surface: #172033; --surface-2: #1e2940; --ink: #e6ebf4; --muted: #9aa6bb; --line: #2c3953;
+  --accent: #7fa8e6; --accent-ink: #0f1522; --de: #a99ae6; --cf: #e3a356; --ac: #4fc2b1;
+  --ok: #5fcb84; --warn: #e8b64c; --bad: #f08079; --ok-bg: #173325; --warn-bg: #3a2e12; --bad-bg: #3d1c1c;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: .01em; text-wrap: balance; margin: 0; line-height: 1.15; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.2rem; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* En-tête */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-inner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-mark { width: 34px; height: 34px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 1rem; flex: none; }
+.brand h1 { font-size: 1.35rem; }
+.brand small { display: block; color: var(--muted); font-size: .78rem; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
+nav.tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+nav.tabs button { background: none; border: 0; padding: 8px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: .9rem; }
+nav.tabs button:hover { background: var(--surface-2); color: var(--ink); }
+nav.tabs button[aria-current="page"] { color: var(--accent); background: var(--surface-2); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
+.btn.small { padding: 5px 10px; font-size: .82rem; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+main { padding-block: 24px 64px; display: grid; gap: 24px; }
+section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; min-width: 0; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.grid-2 > * { min-width: 0; }
+
+.demo-banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 14px; border: 1px dashed var(--warn); background: var(--warn-bg); border-radius: 8px; font-size: .9rem; }
+
+/* Circuit */
+.circuit { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; align-items: stretch; }
+.station { position: relative; padding: 14px 16px; border: 1px solid var(--line); background: var(--surface); display: grid; gap: 4px; min-width: 0; }
+.station + .station { border-left: 0; }
+.station:first-child { border-radius: 10px 0 0 10px; }
+.station:last-child { border-radius: 0 10px 10px 0; }
+.station .who { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+.station .who i { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--muted)); flex: none; }
+.station .big { font-family: var(--font-mono); font-size: 2rem; font-weight: 500; line-height: 1.1; }
+.station .sub { font-size: .8rem; color: var(--muted); }
+.station .late { color: var(--bad); font-weight: 600; }
+.station::after { content: "→"; position: absolute; right: -9px; top: 50%; transform: translateY(-50%); background: var(--bg); color: var(--muted); font-size: .9rem; z-index: 1; line-height: 1; padding: 2px 0; }
+.station:last-child::after { display: none; }
+@media (max-width: 820px) {
+  .circuit { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .station, .station + .station { border: 1px solid var(--line); border-radius: 10px !important; }
+  .station::after { display: none; }
+}
+
+/* Indicateurs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { padding: 14px 16px; border-radius: 8px; background: var(--surface-2); display: grid; gap: 2px; }
+.kpi .v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 500; }
+.kpi .v small { font-size: .85rem; color: var(--muted); }
+
+/* Barres de délai */
+.bars { display: grid; gap: 14px; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; align-items: center; }
+.bar-track { position: relative; height: 14px; background: var(--surface-2); border-radius: 3px; }
+.bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--c); }
+.bar-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); opacity: .55; }
+.bar-axis { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; font-size: .72rem; color: var(--muted); }
+.bar-axis .ticks { position: relative; height: 14px; }
+.bar-axis .ticks span { position: absolute; transform: translateX(-50%); font-family: var(--font-mono); }
+@media (max-width: 520px) { .bar-row, .bar-axis { grid-template-columns: 90px 1fr 56px; gap: 8px; } }
+
+/* Tableaux */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr.clickable { cursor: pointer; }
+tbody tr.clickable:hover { background: var(--surface-2); }
+td.r, th.r { text-align: right; }
+.ref { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.objet { max-width: 340px; }
+.empty { padding: 28px; text-align: center; color: var(--muted); }
+
+/* Pastilles */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap; border: 1px solid currentColor; }
+.chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.DE { color: var(--de); } .chip.CF { color: var(--cf); } .chip.AC { color: var(--ac); }
+.chip.paye { color: var(--ok); } .chip.rejete { color: var(--bad); }
+.clock { display: inline-grid; gap: 3px; min-width: 92px; }
+.clock .t { font-family: var(--font-mono); font-size: .82rem; white-space: nowrap; }
+.clock .g { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.clock .g b { display: block; height: 100%; background: var(--ok); }
+.clock.alerte .g b { background: var(--warn); } .clock.alerte .t { color: var(--warn); }
+.clock.retard .g b { background: var(--bad); } .clock.retard .t { color: var(--bad); font-weight: 600; }
+
+/* Cachets (visa / différé / rejet) */
+.stamp { display: inline-block; font-family: var(--font-display); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; padding: 1px 8px; border: 2px solid currentColor; border-radius: 4px; transform: rotate(-2deg); white-space: nowrap; }
+.stamp.vise, .stamp.paye { color: var(--ok); }
+.stamp.differe { color: var(--warn); }
+.stamp.rejete { color: var(--bad); }
+.stamp.transmis { color: var(--muted); border-style: dashed; transform: none; }
+
+/* Filtres */
+.filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.filters input[type="search"] { flex: 1 1 220px; min-width: 0; }
+input[type="text"], input[type="search"], input[type="number"], input[type="date"], select, textarea { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; max-width: 100%; }
+textarea { width: 100%; resize: vertical; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; background: var(--surface); padding: 7px 11px; cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+label.check { display: inline-flex; gap: 6px; align-items: center; font-size: .88rem; cursor: pointer; }
+
+/* Alertes */
+.alerts { display: grid; gap: 8px; }
+.alert { display: grid; grid-template-columns: 4px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px 10px 0; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: var(--surface); }
+.alert:hover { border-color: var(--accent); }
+.alert > i { align-self: stretch; border-radius: 8px 0 0 8px; background: var(--warn); }
+.alert.retard > i { background: var(--bad); }
+.alert .t { min-width: 0; }
+.alert .t div:first-child { font-weight: 600; overflow-wrap: anywhere; }
+
+/* Dialogue */
+dialog { border: 0; padding: 0; border-radius: 12px; width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(10,16,28,.45); }
+.dlg { display: grid; gap: 18px; padding: 22px; }
+.dlg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.x { background: none; border: 0; font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 2px 6px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field input, .field select, .field textarea { width: 100%; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.err { color: var(--bad); font-size: .85rem; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 14px; background: var(--surface-2); border-radius: 8px; }
+.meta div { min-width: 0; overflow-wrap: anywhere; }
+
+/* Chronologie */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+.timeline li { display: grid; grid-template-columns: 20px 1fr; gap: 12px; }
+.timeline .rail { position: relative; display: flex; justify-content: center; }
+.timeline .rail::before { content: ""; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.timeline li:first-child .rail::before { top: 14px; }
+.timeline li:last-child .rail::before { bottom: calc(100% - 14px); }
+.timeline .dot { position: relative; margin-top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--c); }
+.timeline .body { padding-bottom: 16px; min-width: 0; }
+.timeline .row1 { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.timeline .row1 strong { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+.timeline .motif { margin-top: 4px; font-size: .88rem; padding: 6px 10px; border-left: 3px solid var(--line); background: var(--surface-2); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+
+.action-box { border: 1px solid var(--accent); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+.radio-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.radio-row label { display: inline-flex; gap: 6px; align-items: center; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; }
+.radio-row label:has(input:checked) { border-color: var(--accent); background: var(--surface-2); }
+.confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; background: var(--bad-bg); border-radius: 8px; font-size: .9rem; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 5px; border-radius: 3px; display: inline-block; }
+.help { font-size: .85rem; color: var(--muted); max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">PR</div>
+      <h1>Suivi des dossiers PRSEB<small>Direction exécutive · Contrôle financier · Agent comptable</small></h1>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <button data-tab="tableau">Tableau de bord</button>
+      <button data-tab="dossiers">Dossiers</button>
+      <button data-tab="rapports">Rapports</button>
+      <button data-tab="parametres">Paramètres</button>
+    </nav>
+    <button class="btn primary" id="btn-nouveau">+ Nouveau dossier</button>
+  </div>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Référentiels ----------
+  var ACTEURS = {
+    DE: { nom: "Direction exécutive", court: "DE", couleur: "var(--de)" },
+    CF: { nom: "Contrôle financier", court: "CF", couleur: "var(--cf)" },
+    AC: { nom: "Agent comptable", court: "AC", couleur: "var(--ac)" }
+  };
+  var DECISIONS = { transmis: "Transmis", vise: "Visé", differe: "Différé", rejete: "Rejeté", paye: "Payé" };
+  var NATURES = ["Marché / contrat", "Frais de mission", "Formation / atelier", "Fonctionnement", "Indemnités / salaires", "Autre"];
+  var CLE = "prseb-suivi-dossiers-v1";
+
+  var defautParams = {
+    delais: { DE: 5, CF: 5, AC: 5 },
+    feries: "01-01\n05-01\n08-15\n11-01\n12-25",
+    devise: "FCFA"
+  };
+
+  // ---------- Dates & jours ouvrables ----------
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parse(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function aujourdhui() { return iso(new Date()); }
+
+  var cacheFeries = null;
+  function feries() {
+    if (cacheFeries) return cacheFeries;
+    var annuels = {}, fixes = {};
+    String(etat.params.feries || "").split(/[\s,;]+/).forEach(function (l) {
+      l = l.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(l)) fixes[l] = true;
+      else if (/^\d{2}-\d{2}$/.test(l)) annuels[l] = true;
+    });
+    cacheFeries = { annuels: annuels, fixes: fixes };
+    return cacheFeries;
+  }
+  function estOuvrable(d) {
+    var j = d.getDay();
+    if (j === 0 || j === 6) return false;
+    var f = feries(), s = iso(d);
+    return !f.fixes[s] && !f.annuels[s.slice(5)];
+  }
+  // Jours ouvrables écoulés entre a (jour de réception, non compté) et b (inclus).
+  function joursOuvres(a, b) {
+    var d = parse(a), fin = parse(b), n = 0;
+    if (fin <= d) return 0;
+    d.setDate(d.getDate() + 1);
+    while (d <= fin) { if (estOuvrable(d)) n++; d.setDate(d.getDate() + 1); }
+    return n;
+  }
+  function ajouterJO(a, n) {
+    var d = parse(a), k = 0;
+    while (k < n) { d.setDate(d.getDate() + 1); if (estOuvrable(d)) k++; }
+    return iso(d);
+  }
+  function retirerJO(a, n) {
+    var d = parse(a), k = 0;
+    while (k < n) { d.setDate(d.getDate() - 1); if (estOuvrable(d)) k++; }
+    return iso(d);
+  }
+  var fmtDate = new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  var fmtJour = new Intl.DateTimeFormat("fr-FR", { weekday: "short", day: "2-digit", month: "short" });
+  function fd(s) { return s ? fmtDate.format(parse(s)) : "—"; }
+  function fj(s) { return s ? fmtJour.format(parse(s)) : "—"; }
+  var fmtNb = new Intl.NumberFormat("fr-FR");
+  function fm(n) { return (n || n === 0) && n !== "" ? fmtNb.format(n) + " " + etat.params.devise : "—"; }
+  function f1(n) { return n == null || isNaN(n) ? "—" : n.toLocaleString("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: 1 }); }
+  function h(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+  // ---------- État ----------
+  var etat = { dossiers: [], params: JSON.parse(JSON.stringify(defautParams)) };
+  var ui = { onglet: "tableau", recherche: "", position: "tous", retardSeul: false, du: "", au: "" };
+
+  function charger() {
+    try {
+      var brut = localStorage.getItem(CLE);
+      if (brut) {
+        var o = JSON.parse(brut);
+        if (o && Array.isArray(o.dossiers)) {
+          etat.dossiers = o.dossiers;
+          etat.params = Object.assign({}, defautParams, o.params || {});
+          etat.params.delais = Object.assign({}, defautParams.delais, (o.params || {}).delais || {});
+          return;
+        }
+      }
+    } catch (e) { /* stockage indisponible : on part des exemples */ }
+    etat.dossiers = exemples();
+  }
+  function sauver() {
+    cacheFeries = null;
+    try { localStorage.setItem(CLE, JSON.stringify(etat)); } catch (e) { /* stockage indisponible */ }
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  // ---------- Règles de gestion ----------
+  function courante(d) { var e = d.etapes[d.etapes.length - 1]; return e && !e.fin ? e : null; }
+  function visaValide(d) {
+    for (var i = d.etapes.length - 1; i >= 0; i--) {
+      var e = d.etapes[i];
+      if (e.decision === "rejete" || e.reprise) return false;
+      if (e.acteur === "CF" && e.decision) return e.decision === "vise";
+    }
+    return false;
+  }
+  function delai(acteur) { return +etat.params.delais[acteur] || 5; }
+  function duree(e) { return joursOuvres(e.debut, e.fin || aujourdhui()); }
+  function niveau(e) {
+    var n = duree(e), lim = delai(e.acteur);
+    if (n > lim) return "retard";
+    if (n >= lim - 1) return "alerte";
+    return "ok";
+  }
+  function position(d) {
+    if (d.statut === "paye") return "paye";
+    if (d.statut === "rejete") return "rejete";
+    var c = courante(d);
+    return c ? c.acteur : "DE";
+  }
+  function dureeTotale(d) {
+    var last = d.etapes[d.etapes.length - 1];
+    return joursOuvres(d.etapes[0].debut, last.fin || aujourdhui());
+  }
+  function cumulActeur(d, a) {
+    return d.etapes.filter(function (e) { return e.acteur === a; }).reduce(function (s, e) { return s + duree(e); }, 0);
+  }
+
+  // ---------- Exemples ----------
+  function exemples() {
+    var t = aujourdhui();
+    // Chaque scénario : [référence, objet, bénéficiaire, montant, nature, [[acteur, durée JO, décision, motif], ...]]
+    var sc = [
+      ["PRSEB-2026-0144", "Reprographie des guides pédagogiques", "Imprimerie du Plateau", 3850000, "Marché / contrat", [["DE", 1, null]]],
+      ["PRSEB-2026-0141", "Acquisition de fournitures scolaires, lot 2", "SODIFOUR SARL", 24500000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 2, null]]],
+      ["PRSEB-2026-0138", "Paiement prestation de formation des enseignants", "Cabinet EDUCONSEIL", 12750000, "Formation / atelier", [["DE", 3, "transmis"], ["CF", 7, null]]],
+      ["PRSEB-2026-0135", "Frais de mission de supervision régionale", "Équipe de supervision", 2140000, "Frais de mission", [["DE", 1, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 3, null]]],
+      ["PRSEB-2026-0130", "Décompte n°3, construction de salles de classe", "BTP Horizon", 68300000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 4, "vise"], ["DE", 2, "transmis"], ["AC", 6, null]]],
+      ["PRSEB-2026-0127", "Atelier de validation des curricula", "Hôtel La Résidence", 5600000, "Formation / atelier", [["DE", 2, "transmis"], ["CF", 3, "differe", "Pièces justificatives incomplètes : liste de présence non signée."], ["DE", 4, null]]],
+      ["PRSEB-2026-0122", "Maintenance du parc informatique, T3", "INFOTECH Services", 4200000, "Fonctionnement", [["DE", 2, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 4, "paye"]]],
+      ["PRSEB-2026-0119", "Achat de véhicule de liaison", "AUTO PLUS", 31000000, "Marché / contrat", [["DE", 3, "transmis"], ["CF", 5, "rejete", "Dépense non inscrite au plan de passation des marchés."]]],
+      ["PRSEB-2026-0115", "Indemnités des points focaux, septembre", "Points focaux régionaux", 7800000, "Indemnités / salaires", [["DE", 2, "transmis"], ["CF", 7, "vise"], ["DE", 2, "transmis"], ["AC", 3, "paye"]]],
+      ["PRSEB-2026-0110", "Location de salle, revue à mi-parcours", "Centre de conférences", 3300000, "Formation / atelier", [["DE", 1, "transmis"], ["CF", 2, "vise"], ["DE", 1, "transmis"], ["AC", 3, "differe", "RIB du bénéficiaire à actualiser."], ["DE", 3, "transmis"], ["AC", 2, "paye"]]]
+    ];
+    return sc.map(function (s) {
+      var total = s[5].reduce(function (x, e) { return x + e[1]; }, 0);
+      var debut = retirerJO(t, total + 2);
+      var ouvert = s[5][s[5].length - 1][2] === null;
+      if (ouvert) debut = retirerJO(t, total);
+      var etapes = s[5].map(function (e) {
+        var fin = e[2] ? ajouterJO(debut, e[1]) : null;
+        var et = { acteur: e[0], debut: debut, fin: fin, decision: e[2], motif: e[3] || "" };
+        debut = fin;
+        return et;
+      });
+      etapes.forEach(function (e, i) { if (e.decision === "transmis" && etapes[i + 1]) e.vers = etapes[i + 1].acteur; });
+      var last = etapes[etapes.length - 1];
+      return {
+        id: uid(), ref: s[0], objet: s[1], beneficiaire: s[2], montant: s[3], nature: s[4], exemple: true,
+        dateArrivee: etapes[0].debut, etapes: etapes,
+        statut: last.decision === "paye" ? "paye" : last.decision === "rejete" ? "rejete" : "en_cours"
+      };
+    });
+  }
+
+  // ---------- Petits composants ----------
+  function chipPos(d) {
+    var p = position(d);
+    if (p === "paye") return '<span class="chip paye"><i></i>Payé</span>';
+    if (p === "rejete") return '<span class="chip rejete"><i></i>Rejeté</span>';
+    return '<span class="chip ' + p + '"><i></i>' + ACTEURS[p].nom + "</span>";
+  }
+  function horloge(e) {
+    if (!e) return '<span class="muted">—</span>';
+    var n = duree(e), lim = delai(e.acteur), niv = niveau(e);
+    var pct = Math.min(100, n / lim * 100);
+    var txt = n > lim ? "J+" + n + " · " + (n - lim) + " j de retard" : "J+" + n + " / " + lim;
+    return '<span class="clock ' + niv + '" title="Échéance : ' + h(fj(ajouterJO(e.debut, lim))) + '"><span class="t">' + txt + '</span><span class="g"><b style="width:' + pct + '%"></b></span></span>';
+  }
+  function stamp(dec) { return dec ? '<span class="stamp ' + dec + '">' + DECISIONS[dec] + "</span>" : ""; }
+
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  // ---------- Vues ----------
+  var app = document.getElementById("app");
+
+  function render() {
+    document.querySelectorAll("nav.tabs button").forEach(function (b) {
+      if (b.dataset.tab === ui.onglet) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    var html = "";
+    if (etat.dossiers.some(function (d) { return d.exemple; })) {
+      html += '<div class="demo-banner"><span>Les dossiers affichés sont des <strong>exemples</strong> pour découvrir l\'outil. Supprimez-les avant de saisir vos vrais dossiers.</span><button class="btn small" data-act="vider-exemples">Supprimer les exemples</button></div>';
+    }
+    if (ui.onglet === "tableau") html += vueTableau();
+    else if (ui.onglet === "dossiers") html += vueDossiers();
+    else if (ui.onglet === "rapports") html += vueRapports();
+    else html += vueParametres();
+    app.innerHTML = html;
+  }
+
+  function enCours() { return etat.dossiers.filter(function (d) { return d.statut === "en_cours"; }); }
+
+  function vueTableau() {
+    var actifs = enCours();
+    var parPos = { DE: [], CF: [], AC: [] };
+    actifs.forEach(function (d) { var c = courante(d); if (c) parPos[c.acteur].push(d); });
+    function nbRetard(list) { return list.filter(function (d) { return niveau(courante(d)) === "retard"; }).length; }
+    var deApresCF = parPos.DE.filter(function (d) { return d.etapes.length > 1; });
+    var deNouveaux = parPos.DE.filter(function (d) { return d.etapes.length === 1; });
+    var payes = etat.dossiers.filter(function (d) { return d.statut === "paye"; }).length;
+    var rejetes = etat.dossiers.filter(function (d) { return d.statut === "rejete"; }).length;
+
+    function station(titre, c, list, sub) {
+      var r = list ? nbRetard(list) : 0;
+      return '<div class="station" style="--c:' + c + '"><div class="who"><i></i>' + titre + '</div><div class="big">' + (list ? list.length : sub.n) + '</div><div class="sub">' +
+        (list ? (r ? '<span class="late">' + r + " en retard</span>" : "Aucun retard") : sub.t) + "</div></div>";
+    }
+    var html = '<section class="panel"><div class="panel-head"><h2>Circuit du dossier</h2><span class="muted">Situation au ' + h(fd(aujourdhui())) + " · délai de " + delai("CF") + " jours ouvrables par acteur</span></div>";
+    html += '<div class="circuit">' +
+      station("DE · préparation", "var(--de)", deNouveaux) +
+      station("Contrôle financier", "var(--cf)", parPos.CF) +
+      station("DE · retour du CF/AC", "var(--de)", deApresCF) +
+      station("Agent comptable", "var(--ac)", parPos.AC) +
+      station("Clôturés", "var(--ok)", null, { n: payes + rejetes, t: payes + " payé(s) · " + rejetes + " rejeté(s)" }) +
+      "</div></section>";
+
+    // Indicateurs
+    var st = statsActeurs(etat.dossiers);
+    var toutes = [], dansDelai = 0;
+    etat.dossiers.forEach(function (d) { d.etapes.forEach(function (e) { if (e.fin) { toutes.push(e); if (duree(e) <= delai(e.acteur)) dansDelai++; } }); });
+    var totPayes = etat.dossiers.filter(function (d) { return d.statut === "paye"; });
+    var moyCycle = totPayes.length ? totPayes.reduce(function (s, d) { return s + dureeTotale(d); }, 0) / totPayes.length : null;
+    html += '<section class="panel"><div class="panel-head"><h2>Indicateurs</h2></div><div class="kpis">' +
+      kpi("Dossiers en cours", actifs.length, "") +
+      kpi("En retard", actifs.filter(function (d) { return niveau(courante(d)) === "retard"; }).length, "dossier(s)") +
+      kpi("Étapes dans les délais", toutes.length ? Math.round(dansDelai / toutes.length * 100) : "—", toutes.length ? "%" : "") +
+      kpi("Délai moyen CF", f1(st.CF.moy), "j ouvr.") +
+      kpi("Délai moyen AC", f1(st.AC.moy), "j ouvr.") +
+      kpi("Cycle complet moyen", f1(moyCycle), "j ouvr.") +
+      "</div></section>";
+
+    // Alertes + barres
+    var alertes = actifs.map(function (d) { return { d: d, e: courante(d) }; })
+      .filter(function (x) { return niveau(x.e) !== "ok"; })
+      .sort(function (a, b) { return (duree(b.e) - delai(b.e.acteur)) - (duree(a.e) - delai(a.e.acteur)); });
+    html += '<div class="grid-2"><section class="panel"><div class="panel-head"><h3>À relancer</h3><span class="muted">' + alertes.length + " dossier(s)</span></div>";
+    if (!alertes.length) html += '<div class="empty">Aucun dossier en alerte. Tous les acteurs sont dans les délais.</div>';
+    else html += '<div class="alerts">' + alertes.map(function (x) {
+      var n = duree(x.e), lim = delai(x.e.acteur), niv = niveau(x.e);
+      return '<div class="alert ' + niv + '" data-open="' + x.d.id + '" tabindex="0" role="button"><i></i><div class="t"><div><span class="ref">' + h(x.d.ref) + "</span> · " + h(x.d.objet) + '</div><div class="muted" style="font-size:.82rem">Chez ' + ACTEURS[x.e.acteur].nom + " depuis le " + h(fd(x.e.debut)) + " · échéance " + h(fj(ajouterJO(x.e.debut, lim))) + "</div></div>" +
+        '<span class="clock ' + niv + '"><span class="t">' + (n > lim ? "+" + (n - lim) + " j" : "J+" + n + "/" + lim) + "</span></span></div>";
+    }).join("") + "</div>";
+    html += "</section>";
+
+    html += '<section class="panel"><div class="panel-head"><h3>Délai moyen de traitement</h3><span class="muted">étapes terminées</span></div>' + barres(st) + "</section></div>";
+    return html;
+  }
+  function kpi(l, v, u) { return '<div class="kpi"><span class="label">' + l + '</span><span class="v">' + v + (u ? " <small>" + u + "</small>" : "") + "</span></div>"; }
+
+  function barres(st) {
+    var max = Math.max(10, Math.ceil(Math.max(st.DE.max || 0, st.CF.max || 0, st.AC.max || 0)));
+    var html = '<div class="bars">';
+    ["DE", "CF", "AC"].forEach(function (a) {
+      var m = st[a].moy, lim = delai(a);
+      html += '<div class="bar-row"><span style="font-weight:600;font-size:.88rem">' + ACTEURS[a].nom + '</span><div class="bar-track">' +
+        (m != null ? '<div class="bar-fill" style="--c:' + (m > lim ? "var(--bad)" : ACTEURS[a].couleur) + ";width:" + (m / max * 100) + '%"></div>' : "") +
+        '<div class="bar-limit" style="left:calc(' + (lim / max * 100) + '% - 1px)" title="Délai réglementaire : ' + lim + ' j"></div></div><span class="num" style="text-align:right">' + f1(m) + " j</span></div>";
+    });
+    var ticks = "";
+    for (var i = 0; i <= max; i += max > 12 ? 5 : 2) ticks += '<span style="left:' + (i / max * 100) + '%">' + i + "</span>";
+    html += '<div class="bar-axis"><span></span><div class="ticks">' + ticks + "</div><span></span></div>";
+    html += '<div class="legend"><span><i style="background:var(--ink);opacity:.55;width:2px;height:12px"></i>Délai réglementaire</span><span><i style="background:var(--bad)"></i>Moyenne au-delà du délai</span></div></div>';
+    return html;
+  }
+
+  function statsActeurs(dossiers, du, au) {
+    var st = {};
+    ["DE", "CF", "AC"].forEach(function (a) { st[a] = { n: 0, somme: 0, max: 0, dansDelai: 0, vise: 0, differe: 0, rejete: 0, paye: 0, encours: 0, retard: 0, moy: null }; });
+    dossiers.forEach(function (d) {
+      d.etapes.forEach(function (e) {
+        if (du && e.debut < du) return;
+        if (au && e.debut > au) return;
+        var s = st[e.acteur], n = duree(e);
+        if (!e.fin) { s.encours++; if (n > delai(e.acteur)) s.retard++; return; }
+        s.n++; s.somme += n; s.max = Math.max(s.max, n);
+        if (n <= delai(e.acteur)) s.dansDelai++;
+        if (s[e.decision] != null) s[e.decision]++;
+      });
+    });
+    Object.keys(st).forEach(function (a) { if (st[a].n) st[a].moy = st[a].somme / st[a].n; });
+    return st;
+  }
+
+  function filtrer() {
+    var q = ui.recherche.toLowerCase().trim();
+    return etat.dossiers.filter(function (d) {
+      var p = position(d);
+      if (ui.position === "clos" && d.statut === "en_cours") return false;
+      if (["DE", "CF", "AC"].indexOf(ui.position) >= 0 && (d.statut !== "en_cours" || p !== ui.position)) return false;
+      if (ui.retardSeul) { var c = courante(d); if (!c || niveau(c) !== "retard") return false; }
+      if (q && (d.ref + " " + d.objet + " " + d.beneficiaire + " " + d.nature).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).sort(function (a, b) { return a.ref < b.ref ? 1 : -1; });
+  }
+
+  function vueDossiers() {
+    var list = filtrer();
+    var segs = [["tous", "Tous"], ["DE", "À la DE"], ["CF", "Au CF"], ["AC", "À l'AC"], ["clos", "Clôturés"]];
+    var html = '<section class="panel"><div class="panel-head"><h2>Dossiers</h2><span class="muted">' + list.length + " sur " + etat.dossiers.length + "</span></div>";
+    html += '<div class="filters"><input type="search" id="f-q" placeholder="Rechercher une référence, un objet, un bénéficiaire…" value="' + h(ui.recherche) + '" aria-label="Rechercher">' +
+      '<div class="seg" role="group" aria-label="Position">' + segs.map(function (s) { return '<button data-pos="' + s[0] + '" aria-pressed="' + (ui.position === s[0]) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
+      '<label class="check"><input type="checkbox" id="f-retard"' + (ui.retardSeul ? " checked" : "") + "> En retard uniquement</label></div>";
+    if (!list.length) {
+      html += '<div class="table-wrap"><div class="empty">' + (etat.dossiers.length ? "Aucun dossier ne correspond aux filtres." : "Aucun dossier pour l'instant. Cliquez sur « Nouveau dossier » pour enregistrer le premier.") + "</div></div></section>";
+      return html;
+    }
+    html += '<div class="table-wrap"><table><thead><tr><th>Référence</th><th>Objet</th><th>Bénéficiaire</th><th class="r">Montant</th><th>Position</th><th>Délai étape</th><th>Dernière décision</th><th class="r">Durée totale</th></tr></thead><tbody>';
+    list.forEach(function (d) {
+      var c = courante(d);
+      var dern = d.etapes.slice().reverse().filter(function (e) { return e.decision && e.decision !== "transmis"; })[0];
+      html += '<tr class="clickable" data-open="' + d.id + '" tabindex="0"><td class="ref">' + h(d.ref) + '</td><td class="objet">' + h(d.objet) + "</td><td>" + h(d.beneficiaire) + '</td><td class="r num">' + h(fm(d.montant)) + "</td><td>" + chipPos(d) + "</td><td>" + horloge(c) + "</td><td>" +
+        (dern ? stamp(dern.decision) + ' <span class="muted" style="font-size:.78rem">' + dern.acteur + "</span>" : '<span class="muted">—</span>') + '</td><td class="r num">' + dureeTotale(d) + " j</td></tr>";
+    });
+    html += "</tbody></table></div></section>";
+    return html;
+  }
+
+  function vueRapports() {
+    var st = statsActeurs(etat.dossiers, ui.du, ui.au);
+    var html = '<section class="panel"><div class="panel-head"><h2>Performance par acteur</h2><div class="filters" style="margin:0"><label class="label" for="r-du">Du</label><input type="date" id="r-du" value="' + h(ui.du) + '"><label class="label" for="r-au">au</label><input type="date" id="r-au" value="' + h(ui.au) + '"></div></div>';
+    html += '<p class="help">Les durées sont comptées en jours ouvrables, du lendemain de la réception jusqu\'à la date de sortie incluse. Samedis, dimanches et jours fériés déclarés dans les paramètres sont exclus. La période filtre les étapes selon leur date de réception.</p>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Acteur</th><th class="r">Délai</th><th class="r">Étapes traitées</th><th class="r">Délai moyen</th><th class="r">Délai max</th><th class="r">Dans les délais</th><th class="r">Visés / payés</th><th class="r">Différés</th><th class="r">Rejetés</th><th class="r">En cours</th><th class="r">En retard</th></tr></thead><tbody>';
+    ["DE", "CF", "AC"].forEach(function (a) {
+      var s = st[a];
+      html += '<tr><td><span class="chip ' + a + '"><i></i>' + ACTEURS[a].nom + '</span></td><td class="r num">' + delai(a) + ' j</td><td class="r num">' + s.n + '</td><td class="r num">' + f1(s.moy) + ' j</td><td class="r num">' + (s.n ? s.max + " j" : "—") + '</td><td class="r num">' + (s.n ? Math.round(s.dansDelai / s.n * 100) + " %" : "—") +
+        '</td><td class="r num">' + (a === "DE" ? "—" : a === "CF" ? s.vise : s.paye) + '</td><td class="r num">' + (a === "DE" ? "—" : s.differe) + '</td><td class="r num">' + (a === "DE" ? "—" : s.rejete) + '</td><td class="r num">' + s.encours + '</td><td class="r num">' + s.retard + "</td></tr>";
+    });
+    html += "</tbody></table></div></section>";
+
+    html += '<section class="panel"><div class="panel-head"><h2>Temps passé par dossier</h2><div class="filters" style="margin:0"><button class="btn small" data-act="export-csv">Exporter en CSV (Excel)</button></div></div>';
+    html += '<div class="table-wrap"><table><thead><tr><th>Référence</th><th>Objet</th><th>Situation</th><th class="r">DE</th><th class="r">CF</th><th class="r">AC</th><th class="r">Total</th><th class="r">Allers-retours CF</th></tr></thead><tbody>';
+    etat.dossiers.slice().sort(function (a, b) { return a.ref < b.ref ? 1 : -1; }).forEach(function (d) {
+      var nbCF = d.etapes.filter(function (e) { return e.acteur === "CF"; }).length;
+      html += '<tr class="clickable" data-open="' + d.id + '" tabindex="0"><td class="ref">' + h(d.ref) + '</td><td class="objet">' + h(d.objet) + "</td><td>" + chipPos(d) + "</td>" +
+        ["DE", "CF", "AC"].map(function (a) {
+          var v = cumulActeur(d, a), n = d.etapes.filter(function (e) { return e.acteur === a; }).length;
+          var trop = d.etapes.some(function (e) { return e.acteur === a && duree(e) > delai(a); });
+          return '<td class="r num"' + (trop ? ' style="color:var(--bad);font-weight:600"' : "") + ">" + (n ? v + " j" : "—") + "</td>";
+        }).join("") + '<td class="r num"><strong>' + dureeTotale(d) + ' j</strong></td><td class="r num">' + nbCF + "</td></tr>";
+    });
+    if (!etat.dossiers.length) html += '<tr><td colspan="8" class="empty">Aucun dossier.</td></tr>';
+    html += "</tbody></table></div></section>";
+    return html;
+  }
+
+  function vueParametres() {
+    var p = etat.params;
+    var html = '<section class="panel"><div class="panel-head"><h2>Paramètres</h2></div><form id="form-params" class="form-grid">';
+    ["DE", "CF", "AC"].forEach(function (a) {
+      html += '<div class="field"><label class="label" for="p-' + a + '">Délai ' + ACTEURS[a].nom + ' (jours ouvrables)</label><input type="number" min="1" max="60" id="p-' + a + '" value="' + h(p.delais[a]) + '"></div>';
+    });
+    html += '<div class="field"><label class="label" for="p-devise">Devise</label><input type="text" id="p-devise" value="' + h(p.devise) + '"></div>';
+    html += '<div class="field full"><label class="label" for="p-feries">Jours fériés</label><textarea id="p-feries" rows="6">' + h(p.feries) + '</textarea><span class="help">Un jour par ligne. <span class="mono">MM-JJ</span> pour un jour férié fixe chaque année (ex. <span class="mono">12-25</span>), <span class="mono">AAAA-MM-JJ</span> pour une date précise (Pâques, Tabaski, Maouloud…). Ces jours ne sont pas décomptés.</span></div>';
+    html += '<div class="actions field full"><button class="btn primary" type="submit">Enregistrer les paramètres</button></div></form></section>';
+
+    html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.</p>' +
+      '<div class="filters"><button class="btn" data-act="export-json">Exporter une sauvegarde (JSON)</button><label class="btn" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button></div>' +
+      '<div id="zone-export"></div><div id="zone-reset"></div></section>';
+    return html;
+  }
+
+  // ---------- Dialogues ----------
+  var dlg = document.getElementById("dlg");
+  function ouvrirDlg(html) { dlg.innerHTML = html; if (!dlg.open) { try { dlg.showModal(); } catch (e) { dlg.setAttribute("open", ""); } } }
+  function fermerDlg() { try { dlg.close(); } catch (e) { dlg.removeAttribute("open"); } }
+
+  function prochaineRef() {
+    var an = new Date().getFullYear(), max = 0;
+    etat.dossiers.forEach(function (d) { var m = /(\d{4})-(\d+)$/.exec(d.ref); if (m && +m[1] === an) max = Math.max(max, +m[2]); });
+    return "PRSEB-" + an + "-" + String(max + 1).padStart(4, "0");
+  }
+
+  function formDossier(d) {
+    var nouveau = !d;
+    d = d || { ref: prochaineRef(), objet: "", beneficiaire: "", montant: "", nature: NATURES[0], dateArrivee: aujourdhui() };
+    ouvrirDlg('<form class="dlg" id="form-dossier" data-id="' + (nouveau ? "" : d.id) + '"><div class="dlg-head"><div><span class="label">' + (nouveau ? "Enregistrement" : "Modification") + '</span><h2>' + (nouveau ? "Nouveau dossier" : h(d.ref)) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>' +
+      '<div class="form-grid">' +
+      '<div class="field"><label class="label" for="d-ref">Référence</label><input type="text" id="d-ref" required value="' + h(d.ref) + '"></div>' +
+      '<div class="field"><label class="label" for="d-nature">Nature de la dépense</label><select id="d-nature">' + NATURES.map(function (n) { return "<option" + (n === d.nature ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></div>" +
+      '<div class="field full"><label class="label" for="d-objet">Objet</label><input type="text" id="d-objet" required value="' + h(d.objet) + '" placeholder="Ex. Paiement du décompte n°2, réhabilitation d\'écoles"></div>' +
+      '<div class="field"><label class="label" for="d-benef">Bénéficiaire / fournisseur</label><input type="text" id="d-benef" value="' + h(d.beneficiaire) + '"></div>' +
+      '<div class="field"><label class="label" for="d-montant">Montant (' + h(etat.params.devise) + ')</label><input type="number" min="0" step="1" id="d-montant" value="' + h(d.montant) + '"></div>' +
+      (nouveau ? '<div class="field"><label class="label" for="d-date">Arrivée au secrétariat DE</label><input type="date" id="d-date" required max="' + aujourdhui() + '" value="' + h(d.dateArrivee) + '"></div>' : "") +
+      '</div><p class="err" id="d-err" hidden></p><div class="actions"><button type="button" class="btn" data-act="close">Annuler</button><button class="btn primary" type="submit">' + (nouveau ? "Enregistrer le dossier" : "Enregistrer les modifications") + "</button></div></form>");
+  }
+
+  function detail(id, extra) {
+    var d = etat.dossiers.filter(function (x) { return x.id === id; })[0];
+    if (!d) { fermerDlg(); return; }
+    var c = courante(d);
+    var html = '<div class="dlg" data-id="' + d.id + '"><div class="dlg-head"><div><span class="label">' + h(d.nature) + '</span><h2><span class="mono" style="font-size:1.1rem">' + h(d.ref) + "</span><br>" + h(d.objet) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>';
+    html += '<div class="meta"><div><div class="label">Bénéficiaire</div>' + h(d.beneficiaire || "—") + '</div><div><div class="label">Montant</div><span class="num">' + h(fm(d.montant)) + '</span></div><div><div class="label">Position</div>' + chipPos(d) + '</div><div><div class="label">Durée totale</div><span class="num">' + dureeTotale(d) + " j ouvrables</span></div></div>";
+
+    // Action
+    if (d.statut === "en_cours" && c) {
+      var lim = delai(c.acteur);
+      html += '<form class="action-box" id="form-action"><div class="panel-head" style="margin:0"><h3>' + (c.acteur === "DE" ? "Transmission" : (c.acteur === "CF" ? "Décision du contrôleur financier" : "Décision de l'agent comptable")) + "</h3>" + horloge(c) + "</div>";
+      html += '<span class="muted" style="font-size:.85rem">Chez ' + ACTEURS[c.acteur].nom + " depuis le " + h(fd(c.debut)) + " · échéance le " + h(fj(ajouterJO(c.debut, lim))) + "</span>";
+      if (c.acteur === "DE") {
+        var vers = visaValide(d) ? "AC" : "CF";
+        html += '<input type="hidden" id="a-dec" value="transmis"><input type="hidden" id="a-vers" value="' + vers + '">' +
+          '<p style="margin:0">' + (vers === "AC" ? "Le dossier porte le visa du contrôleur financier : il part chez l'<strong>Agent comptable</strong> pour paiement." : "Le dossier part au <strong>Contrôle financier</strong> pour visa.") + "</p>";
+      } else {
+        var opts = c.acteur === "CF" ? [["vise", "Visé"], ["differe", "Différé"], ["rejete", "Rejeté"]] : [["paye", "Payé"], ["differe", "Différé"], ["rejete", "Rejeté"]];
+        html += '<div class="radio-row" role="radiogroup" aria-label="Décision">' + opts.map(function (o, i) { return '<label><input type="radio" name="a-dec" value="' + o[0] + '"' + (i === 0 ? " checked" : "") + "> " + o[1] + "</label>"; }).join("") + "</div>";
+        html += '<div class="field"><label class="label" for="a-motif">Motif / observations (obligatoire si différé ou rejeté)</label><textarea id="a-motif" rows="2"></textarea></div>';
+      }
+      html += '<div class="form-grid"><div class="field"><label class="label" for="a-date">' + (c.acteur === "DE" ? "Date de transmission" : "Date de retour du dossier") + '</label><input type="date" id="a-date" required min="' + c.debut + '" max="' + aujourdhui() + '" value="' + aujourdhui() + '"></div></div>';
+      html += '<p class="err" id="a-err" hidden></p><div class="actions"><button class="btn primary" type="submit">' + (c.acteur === "DE" ? "Transmettre au " + (visaValide(d) ? "Agent comptable" : "Contrôle financier") : "Enregistrer la décision") + "</button></div></form>";
+    } else if (d.statut === "rejete") {
+      html += '<div class="action-box"><p style="margin:0">Dossier rejeté. S\'il est repris après correction, il repart de la Direction exécutive et devra de nouveau être visé par le CF.</p><div class="actions"><button class="btn" data-act="reprendre">Reprendre le dossier</button></div></div>';
+    }
+
+    // Chronologie
+    html += '<div><h3 style="margin-bottom:10px">Historique</h3><ol class="timeline">';
+    d.etapes.forEach(function (e) {
+      var n = duree(e), lim = delai(e.acteur);
+      html += '<li style="--c:' + ACTEURS[e.acteur].couleur + '"><div class="rail"><span class="dot"></span></div><div class="body"><div class="row1"><strong>' + ACTEURS[e.acteur].nom + "</strong>" +
+        (e.decision ? stamp(e.decision) + (e.decision === "transmis" && e.vers ? ' <span class="muted" style="font-size:.82rem">vers ' + e.vers + "</span>" : "") : '<span class="chip ' + e.acteur + '"><i></i>En cours</span>') +
+        '<span class="num" style="font-size:.85rem;' + (n > lim ? "color:var(--bad);font-weight:600" : "") + '">' + n + " / " + lim + " j</span></div>" +
+        '<div class="muted" style="font-size:.85rem">Reçu le ' + h(fd(e.debut)) + (e.fin ? " · sorti le " + h(fd(e.fin)) : " · toujours en attente") + (e.reprise ? " · reprise après rejet" : "") + "</div>" +
+        (e.motif ? '<div class="motif">' + h(e.motif) + "</div>" : "") + "</div></li>";
+    });
+    html += "</ol></div>";
+
+    html += '<div class="actions" style="justify-content:space-between"><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn small" data-act="annuler-derniere"' + (d.etapes.length < 2 && !d.etapes[0].fin ? " disabled" : "") + ">Annuler la dernière action</button>" +
+      '<button class="btn small" data-act="modifier">Modifier</button></div><button class="btn small danger" data-act="ask-suppr">Supprimer</button></div>';
+    if (extra === "suppr") html += '<div class="confirm">Supprimer définitivement le dossier ' + h(d.ref) + ' ? <button class="btn small danger" data-act="suppr">Oui, supprimer</button><button class="btn small" data-act="detail">Non</button></div>';
+    html += "</div>";
+    ouvrirDlg(html);
+  }
+
+  function trouver(id) { return etat.dossiers.filter(function (x) { return x.id === id; })[0]; }
+  function dlgId() { var el = dlg.querySelector("[data-id]"); return el && el.dataset.id; }
+
+  function enregistrerAction(d) {
+    var c = courante(d), err = document.getElementById("a-err");
+    var date = document.getElementById("a-date").value;
+    var decEl = dlg.querySelector('input[name="a-dec"]:checked') || document.getElementById("a-dec");
+    var dec = decEl.value;
+    var motifEl = document.getElementById("a-motif"), motif = motifEl ? motifEl.value.trim() : "";
+    function erreur(m) { err.textContent = m; err.hidden = false; }
+    if (!date) return erreur("Indiquez la date.");
+    if (date < c.debut) return erreur("La date ne peut pas précéder la réception du dossier (" + fd(c.debut) + ").");
+    if (date > aujourdhui()) return erreur("La date ne peut pas être dans le futur.");
+    if ((dec === "differe" || dec === "rejete") && !motif) return erreur("Précisez le motif du " + (dec === "differe" ? "différé" : "rejet") + ".");
+    c.fin = date; c.decision = dec; c.motif = motif;
+    if (c.acteur === "DE") {
+      c.vers = document.getElementById("a-vers").value;
+      d.etapes.push({ acteur: c.vers, debut: date, fin: null, decision: null, motif: "" });
+    } else if (dec === "paye") { d.statut = "paye"; }
+    else if (dec === "rejete") { d.statut = "rejete"; }
+    else { d.etapes.push({ acteur: "DE", debut: date, fin: null, decision: null, motif: "" }); }
+    sauver(); render(); detail(d.id);
+    toast(c.acteur === "DE" ? "Dossier transmis au " + ACTEURS[c.vers].nom + "." : "Décision enregistrée : " + DECISIONS[dec].toLowerCase() + ".");
+  }
+
+  function annulerDerniere(d) {
+    var last = d.etapes[d.etapes.length - 1];
+    if (d.statut !== "en_cours") { last.fin = null; last.decision = null; last.motif = ""; d.statut = "en_cours"; }
+    else if (d.etapes.length > 1) {
+      var retire = d.etapes.pop();
+      var p = d.etapes[d.etapes.length - 1];
+      if (retire.reprise) { d.statut = "rejete"; sauver(); render(); detail(d.id); toast("Reprise annulée."); return; }
+      p.fin = null; p.decision = null; p.motif = ""; delete p.vers;
+    } else return;
+    sauver(); render(); detail(d.id); toast("Dernière action annulée.");
+  }
+
+  // ---------- Exports ----------
+  function telecharger(nom, contenu, type) {
+    try {
+      var blob = new Blob([contenu], { type: type });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = nom;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    } catch (e) { /* téléchargement bloqué : la zone de copie reste disponible */ }
+  }
+  function csv() {
+    var lignes = [["Référence", "Objet", "Bénéficiaire", "Nature", "Montant", "Situation", "Arrivée DE", "Jours DE", "Jours CF", "Jours AC", "Durée totale (j ouvrables)", "Dernière décision", "Motif"]];
+    etat.dossiers.forEach(function (d) {
+      var p = position(d);
+      var dern = d.etapes.slice().reverse().filter(function (e) { return e.decision && e.decision !== "transmis"; })[0];
+      lignes.push([d.ref, d.objet, d.beneficiaire, d.nature, d.montant, p === "paye" ? "Payé" : p === "rejete" ? "Rejeté" : "En cours (" + p + ")", d.etapes[0].debut,
+        cumulActeur(d, "DE"), cumulActeur(d, "CF"), cumulActeur(d, "AC"), dureeTotale(d), dern ? dern.acteur + " : " + DECISIONS[dern.decision] : "", dern ? dern.motif : ""]);
+    });
+    return "﻿" + lignes.map(function (l) { return l.map(function (v) { v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(";"); }).join("\r\n");
+  }
+
+  // ---------- Événements ----------
+  document.querySelector("nav.tabs").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button[data-tab]"); if (!b) return;
+    ui.onglet = b.dataset.tab;
+    try { history.replaceState(null, "", "#" + ui.onglet); } catch (e) { /* ignore */ }
+    render();
+  });
+  document.getElementById("btn-nouveau").addEventListener("click", function () { formDossier(null); });
+
+  function surOuvrir(ev) {
+    var row = ev.target.closest("[data-open]");
+    if (row) detail(row.dataset.open);
+  }
+  app.addEventListener("click", function (ev) {
+    var act = ev.target.closest("[data-act]");
+    if (act) {
+      var a = act.dataset.act;
+      if (a === "vider-exemples") { etat.dossiers = etat.dossiers.filter(function (d) { return !d.exemple; }); sauver(); render(); toast("Exemples supprimés."); }
+      else if (a === "export-csv") { telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".csv", csv(), "text/csv;charset=utf-8"); toast("Export CSV généré."); }
+      else if (a === "export-json") {
+        var json = JSON.stringify(etat, null, 2);
+        telecharger("sauvegarde-prseb-" + aujourdhui() + ".json", json, "application/json");
+        document.getElementById("zone-export").innerHTML = '<div class="field" style="margin-top:12px"><label class="label" for="json-out">Si le téléchargement n\'a pas démarré, copiez ce texte dans un fichier .json</label><textarea id="json-out" rows="6" readonly class="mono" style="font-size:.78rem">' + h(json) + "</textarea></div>";
+      }
+      else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers enregistrés dans ce navigateur ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
+      else if (a === "no-reset") { document.getElementById("zone-reset").innerHTML = ""; }
+      else if (a === "reset") { etat.dossiers = []; sauver(); render(); toast("Toutes les données ont été effacées."); }
+      return;
+    }
+    var pos = ev.target.closest("[data-pos]");
+    if (pos) { ui.position = pos.dataset.pos; render(); return; }
+    surOuvrir(ev);
+  });
+  app.addEventListener("keydown", function (ev) { if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches("[data-open]")) { ev.preventDefault(); surOuvrir(ev); } });
+  app.addEventListener("input", function (ev) {
+    if (ev.target.id === "f-q") {
+      ui.recherche = ev.target.value; var pos = ev.target.selectionStart;
+      render(); var el = document.getElementById("f-q"); el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ }
+    }
+  });
+  app.addEventListener("change", function (ev) {
+    var t = ev.target;
+    if (t.id === "f-retard") { ui.retardSeul = t.checked; render(); }
+    else if (t.id === "r-du") { ui.du = t.value; render(); }
+    else if (t.id === "r-au") { ui.au = t.value; render(); }
+    else if (t.id === "import-file" && t.files[0]) {
+      var r = new FileReader();
+      r.onload = function () {
+        try {
+          var o = JSON.parse(r.result);
+          if (!o || !Array.isArray(o.dossiers)) throw new Error();
+          etat.dossiers = o.dossiers;
+          etat.params = Object.assign({}, defautParams, o.params || {});
+          sauver(); render(); toast(o.dossiers.length + " dossier(s) importé(s).");
+        } catch (e) { toast("Ce fichier n'est pas une sauvegarde valide de l'application."); }
+      };
+      r.readAsText(t.files[0]);
+    }
+  });
+  app.addEventListener("submit", function (ev) {
+    if (ev.target.id !== "form-params") return;
+    ev.preventDefault();
+    ["DE", "CF", "AC"].forEach(function (a) { var v = parseInt(document.getElementById("p-" + a).value, 10); etat.params.delais[a] = v > 0 ? v : 5; });
+    etat.params.devise = document.getElementById("p-devise").value.trim() || "FCFA";
+    etat.params.feries = document.getElementById("p-feries").value;
+    sauver(); render(); toast("Paramètres enregistrés.");
+  });
+
+  dlg.addEventListener("click", function (ev) {
+    if (ev.target === dlg) { fermerDlg(); return; }
+    var act = ev.target.closest("[data-act]"); if (!act) return;
+    var a = act.dataset.act, d = trouver(dlgId());
+    if (a === "close") fermerDlg();
+    else if (a === "modifier") formDossier(d);
+    else if (a === "ask-suppr") detail(d.id, "suppr");
+    else if (a === "detail") detail(d.id);
+    else if (a === "suppr") { etat.dossiers = etat.dossiers.filter(function (x) { return x !== d; }); sauver(); fermerDlg(); render(); toast("Dossier " + d.ref + " supprimé."); }
+    else if (a === "annuler-derniere") annulerDerniere(d);
+    else if (a === "reprendre") {
+      var last = d.etapes[d.etapes.length - 1];
+      d.etapes.push({ acteur: "DE", debut: last.fin || aujourdhui(), fin: null, decision: null, motif: "", reprise: true });
+      d.statut = "en_cours"; sauver(); render(); detail(d.id); toast("Dossier repris à la Direction exécutive.");
+    }
+  });
+  dlg.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (ev.target.id === "form-action") { enregistrerAction(trouver(dlgId())); return; }
+    if (ev.target.id !== "form-dossier") return;
+    var id = ev.target.dataset.id, err = document.getElementById("d-err");
+    var ref = document.getElementById("d-ref").value.trim(), objet = document.getElementById("d-objet").value.trim();
+    if (!ref || !objet) { err.textContent = "La référence et l'objet sont obligatoires."; err.hidden = false; return; }
+    if (etat.dossiers.some(function (x) { return x.ref === ref && x.id !== id; })) { err.textContent = "La référence " + ref + " existe déjà."; err.hidden = false; return; }
+    var m = document.getElementById("d-montant").value;
+    var champs = { ref: ref, objet: objet, beneficiaire: document.getElementById("d-benef").value.trim(), montant: m === "" ? "" : +m, nature: document.getElementById("d-nature").value };
+    if (id) { Object.assign(trouver(id), champs); sauver(); render(); detail(id); toast("Dossier modifié."); return; }
+    var date = document.getElementById("d-date").value || aujourdhui();
+    if (date > aujourdhui()) { err.textContent = "La date d'arrivée ne peut pas être dans le futur."; err.hidden = false; return; }
+    var d = Object.assign({ id: uid(), dateArrivee: date, statut: "en_cours", etapes: [{ acteur: "DE", debut: date, fin: null, decision: null, motif: "" }] }, champs);
+    etat.dossiers.push(d); sauver(); ui.onglet = "dossiers"; render(); detail(d.id); toast("Dossier " + ref + " enregistré.");
+  });
+
+  // ---------- Démarrage ----------
+  charger();
+  var hash = (location.hash || "").slice(1);
+  if (["tableau", "dossiers", "rapports", "parametres"].indexOf(hash) >= 0) ui.onglet = hash;
+  render();
+})();
+</script>
+</body>
+</html>
