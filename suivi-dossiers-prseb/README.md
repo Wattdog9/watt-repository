@@ -24,10 +24,11 @@ Chaque dossier est identifié par son **numéro d'ordre de paiement (OP)**, qui 
 - Tableau de bord : nombre de dossiers à chaque étape du circuit, retards, délais moyens par acteur comparés au délai réglementaire, liste des dossiers à relancer.
 - Liste des dossiers avec recherche par n° d'ordre de paiement, objet ou bénéficiaire, et filtres (position, retard).
 - Fiche dossier : décision avec date et motif, historique complet, échéance, annulation de la dernière action.
+- Différés : pour le Contrôle financier et pour l'Agent comptable, nombre de différés émis, différés à lever par la DE (avec retard), dossiers renvoyés en réexamen, différés levés puis visés ou payés, délais moyens de levée et de réexamen. La liste suit chaque différé : date, motif, réponse de la DE, date de renvoi, puis décision après réexamen.
 - Rapports : performance par acteur sur une période, temps passé par dossier, export Excel.
 - Paramètres : délais, jours fériés (fixes `MM-JJ` ou datés `AAAA-MM-JJ`), devise, sauvegarde et import.
 - Sauvegardes en deux formats :
-  - **Excel (.xlsx)** : un classeur à trois onglets, « Dossiers » (un dossier par ligne), « Historique » (chaque passage DE/CF/AC avec dates, décision, durée et motif) et « Performance » (statistiques par acteur) ;
+  - **Excel (.xlsx)** : un classeur à quatre onglets, « Dossiers » (un dossier par ligne), « Historique » (chaque passage DE/CF/AC avec dates, décision, durée et motif), « Différés » (chaque différé, sa levée et son réexamen) et « Performance » (statistiques par acteur) ;
   - **JSON** : la sauvegarde complète, la seule qui peut être réimportée dans l'application.
 
 Les durées sont comptées en jours ouvrables, du lendemain de la réception jusqu'au jour de sortie inclus, sans les week-ends ni les jours fériés déclarés.

@@ -125,6 +125,11 @@ section.panel { background: var(--surface); border: 1px solid var(--line); borde
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .kpi { padding: 14px 16px; border-radius: 8px; background: var(--surface-2); display: grid; gap: 2px; }
 .kpi .v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 500; color: var(--heading); }
+.carte-diff { display: grid; gap: 12px; min-width: 0; }
+.carte-diff h3 { display: flex; align-items: center; gap: 8px; }
+.carte-diff h3 i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.carte-diff .kpis { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.chip.warn { color: var(--warn); }
 .kpi.vert { background: var(--ok-bg); } .kpi.vert .v { color: var(--ok); }
 .kpi.orange { background: var(--warn-bg); } .kpi.orange .v { color: var(--warn); }
 .kpi .v small { font-size: .85rem; color: var(--muted); }
@@ -261,6 +266,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     <nav class="tabs" aria-label="Sections">
       <button data-tab="tableau">Tableau de bord</button>
       <button data-tab="dossiers">Dossiers</button>
+      <button data-tab="differes">Différés</button>
       <button data-tab="rapports">Rapports</button>
       <button data-tab="parametres">Paramètres</button>
     </nav>
@@ -347,7 +353,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   // ---------- État ----------
   var etat = { dossiers: [], params: JSON.parse(JSON.stringify(defautParams)) };
-  var ui = { onglet: "tableau", recherche: "", position: "tous", retardSeul: false, du: "", au: "", lecture: false, chargement: false, indispo: false };
+  var ui = { onglet: "tableau", recherche: "", position: "tous", retardSeul: false, du: "", au: "", lecture: false, chargement: false, indispo: false, diffActeur: "tous", diffStatut: "tous" };
 
   function charger() {
     try {
@@ -524,6 +530,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       ["OP-2026-0141", "Acquisition de fournitures scolaires, lot 2", "SODIFOUR SARL", 24500000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 2, null]]],
       ["OP-2026-0138", "Paiement prestation de formation des enseignants", "Cabinet EDUCONSEIL", 12750000, "Formation / atelier", [["DE", 3, "transmis"], ["CF", 7, null]]],
       ["OP-2026-0135", "Frais de mission de supervision régionale", "Équipe de supervision", 2140000, "Frais de mission", [["DE", 1, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 3, null]]],
+      ["OP-2026-0133", "Acquisition de kits d'hygiène pour les écoles", "SANIPRO", 9450000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 4, "differe", "Proforma non visée par la commission de réception."], ["DE", 2, "transmis"], ["CF", 1, null]]],
+      ["OP-2026-0125", "Honoraires de l'auditeur externe, exercice 2025", "Cabinet AUDIT-CONSEIL", 15600000, "Fonctionnement", [["DE", 1, "transmis"], ["CF", 2, "vise"], ["DE", 1, "transmis"], ["AC", 3, "differe", "Attestation de régularité fiscale expirée."], ["DE", 6, null]]],
       ["OP-2026-0130", "Décompte n°3, construction de salles de classe", "BTP Horizon", 68300000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 4, "vise"], ["DE", 2, "transmis"], ["AC", 6, null]]],
       ["OP-2026-0127", "Atelier de validation des curricula", "Hôtel La Résidence", 5600000, "Formation / atelier", [["DE", 2, "transmis"], ["CF", 3, "differe", "Pièces justificatives incomplètes : liste de présence non signée."], ["DE", 4, null]]],
       ["OP-2026-0122", "Maintenance du parc informatique, T3", "INFOTECH Services", 4200000, "Fonctionnement", [["DE", 2, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 4, "paye"]]],
@@ -542,7 +550,10 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
         debut = fin;
         return et;
       });
-      etapes.forEach(function (e, i) { if (e.decision === "transmis" && etapes[i + 1]) e.vers = etapes[i + 1].acteur; });
+      etapes.forEach(function (e, i) {
+        if (e.decision === "transmis" && etapes[i + 1]) e.vers = etapes[i + 1].acteur;
+        if (e.decision === "transmis" && i > 0 && etapes[i - 1].decision === "differe") e.motif = "Pièces complémentaires transmises.";
+      });
       var last = etapes[etapes.length - 1];
       return {
         id: uid(), ref: s[0], objet: s[1], beneficiaire: s[2], montant: s[3], nature: s[4], exemple: true,
@@ -604,6 +615,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     }
     if (ui.onglet === "tableau") html += vueTableau();
     else if (ui.onglet === "dossiers") html += vueDossiers();
+    else if (ui.onglet === "differes") html += vueDifferes();
     else if (ui.onglet === "rapports") html += vueRapports();
     else html += vueParametres();
     app.innerHTML = html;
@@ -651,10 +663,12 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     etat.dossiers.forEach(function (d) { d.etapes.forEach(function (e) { if (e.fin) { toutes.push(e); if (duree(e) <= delai(e.acteur)) dansDelai++; } }); });
     var totPayes = etat.dossiers.filter(function (d) { return d.statut === "paye"; });
     var moyCycle = totPayes.length ? totPayes.reduce(function (s, d) { return s + dureeTotale(d); }, 0) / totPayes.length : null;
+    var nbALever = actifs.filter(differeEnCours).length;
     var nbEnRetard = actifs.filter(function (d) { return niveau(courante(d)) === "retard"; }).length;
     html += '<section class="panel"><div class="panel-head"><h2>Indicateurs</h2></div><div class="kpis">' +
       kpi("Dossiers en cours", actifs.length, "") +
       kpi("En retard", nbEnRetard, "dossier(s)", nbEnRetard ? "orange" : "") +
+      kpi("Différés à lever", nbALever, "dossier(s)", nbALever ? "orange" : "") +
       kpi("Étapes dans les délais", toutes.length ? Math.round(dansDelai / toutes.length * 100) : "—", toutes.length ? "%" : "", "vert") +
       kpi("Délai moyen CF", f1(st.CF.moy), "j ouvr.") +
       kpi("Délai moyen AC", f1(st.AC.moy), "j ouvr.") +
@@ -747,6 +761,87 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     return html;
   }
 
+  // ---------- Différés ----------
+  // Un différé = une étape CF/AC close par « différé », suivie de l'étape DE qui le lève
+  // (renvoi du dossier) puis de l'étape de réexamen chez le même acteur.
+  function differeEnCours(d) {
+    var c = courante(d), i = d.etapes.indexOf(c);
+    return c && c.acteur === "DE" && i > 0 && d.etapes[i - 1].decision === "differe" ? d.etapes[i - 1] : null;
+  }
+  function listeDifferes() {
+    var res = [];
+    etat.dossiers.forEach(function (d) {
+      var rang = { CF: 0, AC: 0 };
+      d.etapes.forEach(function (e, i) {
+        if (e.decision !== "differe" || (e.acteur !== "CF" && e.acteur !== "AC")) return;
+        rang[e.acteur]++;
+        var lev = d.etapes[i + 1], rex = lev && lev.fin ? d.etapes[i + 2] : null, statut;
+        if (!lev) statut = "traite";
+        else if (!lev.fin) statut = d.statut === "en_cours" ? "a_lever" : "traite";
+        else if (rex && !rex.fin) statut = d.statut === "en_cours" ? "reexamen" : "traite";
+        else statut = "traite";
+        res.push({ d: d, e: e, acteur: e.acteur, rang: rang[e.acteur], lev: lev, rex: rex, statut: statut, issue: rex && rex.fin ? rex.decision : d.statut === "rejete" && !rex ? "rejete" : null });
+      });
+    });
+    return res.sort(function (a, b) { return a.e.fin < b.e.fin ? 1 : a.e.fin > b.e.fin ? -1 : triOP(a.d, b.d); });
+  }
+  function chipDiffere(x) {
+    if (x.statut === "a_lever") return '<span class="chip DE"><i></i>À lever (DE)</span>';
+    if (x.statut === "reexamen") return '<span class="chip ' + x.acteur + '"><i></i>En réexamen ' + x.acteur + "</span>";
+    if (x.issue === "differe") return '<span class="chip warn"><i></i>Différé à nouveau</span>';
+    if (x.issue === "rejete") return '<span class="chip rejete"><i></i>Rejeté</span>';
+    if (x.issue === "vise" || x.issue === "paye") return '<span class="chip paye"><i></i>Levé · ' + DECISIONS[x.issue].toLowerCase() + "</span>";
+    return '<span class="chip"><i></i>Clos</span>';
+  }
+  function moyenne(t) { return t.length ? t.reduce(function (s, v) { return s + v; }, 0) / t.length : null; }
+
+  function vueDifferes() {
+    var tous = listeDifferes();
+    var html = '<section class="panel"><div class="panel-head"><h2>Suivi des différés</h2><span class="muted">Délai de levée : ' + delai("DE") + " j ouvrables à la DE · réexamen : " + delai("CF") + " j au CF, " + delai("AC") + " j à l'AC</span></div>";
+    html += '<p class="help" style="margin:0 0 16px">Quand le Contrôle financier ou l\'Agent comptable diffère un dossier, la Direction exécutive le lève (pièces ou corrections) puis le renvoie pour réexamen. Chaque différé est suivi jusqu\'à la décision qui suit.</p>';
+    html += '<div class="grid-2">';
+    ["CF", "AC"].forEach(function (a) {
+      var l = tous.filter(function (x) { return x.acteur === a; });
+      var aLever = l.filter(function (x) { return x.statut === "a_lever"; });
+      var retard = aLever.filter(function (x) { return niveau(x.lev) === "retard"; }).length;
+      var rex = l.filter(function (x) { return x.statut === "reexamen"; });
+      var leves = l.filter(function (x) { return x.issue === "vise" || x.issue === "paye"; }).length;
+      var dLev = moyenne(l.filter(function (x) { return x.lev && x.lev.fin; }).map(function (x) { return duree(x.lev); }));
+      var dRex = moyenne(l.filter(function (x) { return x.rex && x.rex.fin; }).map(function (x) { return duree(x.rex); }));
+      var decisions = 0;
+      etat.dossiers.forEach(function (d) { d.etapes.forEach(function (e) { if (e.acteur === a && e.fin && e.decision) decisions++; }); });
+      html += '<div class="carte-diff" style="--c:' + ACTEURS[a].couleur + '"><h3><i></i>' + ACTEURS[a].nom + '</h3><div class="kpis">' +
+        kpi("Différés émis", l.length, decisions ? "soit " + Math.round(l.length / decisions * 100) + " %" : "") +
+        kpi("À lever par la DE", aLever.length, retard ? retard + " en retard" : "", aLever.length ? "orange" : "") +
+        kpi("En réexamen", rex.length, "") +
+        kpi("Levés puis " + (a === "CF" ? "visés" : "payés"), leves, "", "vert") +
+        kpi("Délai moyen de levée", f1(dLev), "j ouvr.") +
+        kpi("Délai moyen de réexamen", f1(dRex), "j ouvr.") +
+        "</div></div>";
+    });
+    html += "</div></section>";
+
+    var liste = tous.filter(function (x) {
+      if (ui.diffActeur !== "tous" && x.acteur !== ui.diffActeur) return false;
+      if (ui.diffStatut !== "tous" && x.statut !== ui.diffStatut) return false;
+      return true;
+    });
+    var segA = [["tous", "CF et AC"], ["CF", "Contrôle financier"], ["AC", "Agent comptable"]];
+    var segS = [["tous", "Tous"], ["a_lever", "À lever"], ["reexamen", "En réexamen"], ["traite", "Traités"]];
+    html += '<section class="panel"><div class="panel-head"><h2>Différés</h2><span class="muted">' + liste.length + " sur " + tous.length + "</span></div>";
+    html += '<div class="filters"><div class="seg" role="group" aria-label="Acteur">' + segA.map(function (x) { return '<button data-diff-acteur="' + x[0] + '" aria-pressed="' + (ui.diffActeur === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="seg" role="group" aria-label="Statut">' + segS.map(function (x) { return '<button data-diff-statut="' + x[0] + '" aria-pressed="' + (ui.diffStatut === x[0]) + '">' + x[1] + "</button>"; }).join("") + "</div></div>";
+    if (!liste.length) return html + '<div class="table-wrap"><div class="empty">' + (tous.length ? "Aucun différé ne correspond aux filtres." : "Aucun différé enregistré. Les différés apparaissent ici dès que le CF ou l\'AC diffère un dossier.") + "</div></div></section>";
+    html += '<div class="table-wrap"><table><thead><tr><th>N° OP</th><th>Objet</th><th>Différé par</th><th>Date du différé</th><th>Motif</th><th>Levée par la DE</th><th>Réexamen</th><th>Statut</th></tr></thead><tbody>';
+    liste.forEach(function (x) {
+      var levee = !x.lev ? "—" : !x.lev.fin ? horloge(x.lev) : '<span class="num">' + duree(x.lev) + " j</span>" + (duree(x.lev) > delai("DE") ? ' <span class="chip rejete" style="font-size:.7rem">hors délai</span>' : "") + '<div class="muted" style="font-size:.78rem">renvoyé le ' + h(fd(x.lev.fin)) + "</div>";
+      var reex = !x.rex ? '<span class="muted">—</span>' : !x.rex.fin ? horloge(x.rex) : stamp(x.rex.decision) + ' <span class="num" style="font-size:.82rem">' + duree(x.rex) + " j</span>";
+      html += '<tr class="clickable" data-open="' + x.d.id + '" tabindex="0"><td class="ref">' + h(x.d.ref) + '</td><td class="objet">' + h(x.d.objet) + '</td><td><span class="chip ' + x.acteur + '"><i></i>' + x.acteur + "</span>" + (x.rang > 1 ? ' <span class="muted" style="font-size:.78rem">' + x.rang + "e</span>" : "") + '</td><td class="num">' + h(fd(x.e.fin)) +
+        '</td><td class="objet" style="font-size:.85rem">' + h(x.e.motif) + (x.lev && x.lev.fin && x.lev.motif ? '<div class="muted" style="font-size:.78rem;margin-top:3px">Réponse DE : ' + h(x.lev.motif) + "</div>" : "") + "</td><td>" + levee + "</td><td>" + reex + "</td><td>" + chipDiffere(x) + "</td></tr>";
+    });
+    return html + "</tbody></table></div></section>";
+  }
+
   function vueRapports() {
     var st = statsActeurs(etat.dossiers, ui.du, ui.au);
     var html = '<section class="panel"><div class="panel-head"><h2>Performance par acteur</h2><div class="filters" style="margin:0"><label class="label" for="r-du">Du</label><input type="date" id="r-du" value="' + h(ui.du) + '"><label class="label" for="r-au">au</label><input type="date" id="r-au" value="' + h(ui.au) + '"></div></div>';
@@ -837,28 +932,34 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (ui.lecture) { /* consultation seule */ }
     else if (d.statut === "en_cours" && c) {
       var lim = delai(c.acteur);
-      html += '<form class="action-box" id="form-action"><div class="panel-head" style="margin:0"><h3>' + (c.acteur === "DE" ? "Transmission" : (c.acteur === "CF" ? "Décision du contrôleur financier" : "Décision de l'agent comptable")) + "</h3>" + horloge(c) + "</div>";
+      html += '<form class="action-box" id="form-action"><div class="panel-head" style="margin:0"><h3>' + (c.acteur === "DE" ? (differeEnCours(d) ? "Levée du différé" : "Transmission") : (c.acteur === "CF" ? "Décision du contrôleur financier" : "Décision de l'agent comptable")) + "</h3>" + horloge(c) + "</div>";
       html += '<span class="muted" style="font-size:.85rem">Chez ' + ACTEURS[c.acteur].nom + " depuis le " + h(fd(c.debut)) + " · échéance le " + h(fj(ajouterJO(c.debut, lim))) + "</span>";
       if (c.acteur === "DE") {
-        var vers = visaValide(d) ? "AC" : "CF";
-        html += '<input type="hidden" id="a-dec" value="transmis"><input type="hidden" id="a-vers" value="' + vers + '">' +
-          '<p style="margin:0">' + (vers === "AC" ? "Le dossier porte le visa du contrôleur financier : il part chez l'<strong>Agent comptable</strong> pour paiement." : "Le dossier part au <strong>Contrôle financier</strong> pour visa.") + "</p>";
+        var vers = visaValide(d) ? "AC" : "CF", dif = differeEnCours(d);
+        html += '<input type="hidden" id="a-dec" value="transmis"><input type="hidden" id="a-vers" value="' + vers + '">';
+        if (dif) {
+          html += '<div class="motif" style="margin:0"><strong>Différé ' + (dif.acteur === "CF" ? "du Contrôle financier" : "de l'Agent comptable") + " du " + h(fd(dif.fin)) + " :</strong> " + h(dif.motif) + "</div>" +
+            '<p style="margin:0">Une fois le différé levé, le dossier est renvoyé ' + (vers === "AC" ? "à l'<strong>Agent comptable</strong>" : "au <strong>Contrôle financier</strong>") + " pour réexamen.</p>" +
+            '<div class="field"><label class="label" for="a-motif">Réponse au différé / pièces fournies</label><textarea id="a-motif" rows="2" placeholder="Ex. Liste de présence signée jointe"></textarea></div>';
+        } else {
+          html += '<p style="margin:0">' + (vers === "AC" ? "Le dossier porte le visa du contrôleur financier : il part chez l'<strong>Agent comptable</strong> pour paiement." : "Le dossier part au <strong>Contrôle financier</strong> pour visa.") + "</p>";
+        }
       } else {
         var opts = c.acteur === "CF" ? [["vise", "Visé"], ["differe", "Différé"], ["rejete", "Rejeté"]] : [["paye", "Payé"], ["differe", "Différé"], ["rejete", "Rejeté"]];
         html += '<div class="radio-row" role="radiogroup" aria-label="Décision">' + opts.map(function (o, i) { return '<label><input type="radio" name="a-dec" value="' + o[0] + '"' + (i === 0 ? " checked" : "") + "> " + o[1] + "</label>"; }).join("") + "</div>";
         html += '<div class="field"><label class="label" for="a-motif">Motif / observations (obligatoire si différé ou rejeté)</label><textarea id="a-motif" rows="2"></textarea></div>';
       }
-      html += '<div class="form-grid"><div class="field"><label class="label" for="a-date">' + (c.acteur === "DE" ? "Date de transmission" : "Date de retour du dossier") + '</label><input type="date" id="a-date" required min="' + c.debut + '" max="' + aujourdhui() + '" value="' + aujourdhui() + '"></div></div>';
-      html += '<p class="err" id="a-err" hidden></p><div class="actions"><button class="btn primary" type="submit">' + (c.acteur === "DE" ? "Transmettre " + (visaValide(d) ? "à l'Agent comptable" : "au Contrôle financier") : "Enregistrer la décision") + "</button></div></form>";
+      html += '<div class="form-grid"><div class="field"><label class="label" for="a-date">' + (c.acteur === "DE" ? (differeEnCours(d) ? "Date de renvoi" : "Date de transmission") : "Date de retour du dossier") + '</label><input type="date" id="a-date" required min="' + c.debut + '" max="' + aujourdhui() + '" value="' + aujourdhui() + '"></div></div>';
+      html += '<p class="err" id="a-err" hidden></p><div class="actions"><button class="btn primary" type="submit">' + (c.acteur === "DE" ? (differeEnCours(d) ? "Renvoyer " : "Transmettre ") + (visaValide(d) ? "à l'Agent comptable" : "au Contrôle financier") : "Enregistrer la décision") + "</button></div></form>";
     } else if (d.statut === "rejete") {
       html += '<div class="action-box"><p style="margin:0">Dossier rejeté. S\'il est repris après correction, il repart de la Direction exécutive et devra de nouveau être visé par le CF.</p><div class="actions"><button class="btn" data-act="reprendre">Reprendre le dossier</button></div></div>';
     }
 
     // Chronologie
     html += '<div><h3 style="margin-bottom:10px">Historique</h3><ol class="timeline">';
-    d.etapes.forEach(function (e) {
-      var n = duree(e), lim = delai(e.acteur);
-      html += '<li style="--c:' + ACTEURS[e.acteur].couleur + '"><div class="rail"><span class="dot"></span></div><div class="body"><div class="row1"><strong>' + ACTEURS[e.acteur].nom + "</strong>" +
+    d.etapes.forEach(function (e, i) {
+      var n = duree(e), lim = delai(e.acteur), levee = e.acteur === "DE" && i > 0 && d.etapes[i - 1].decision === "differe";
+      html += '<li style="--c:' + ACTEURS[e.acteur].couleur + '"><div class="rail"><span class="dot"></span></div><div class="body"><div class="row1"><strong>' + ACTEURS[e.acteur].nom + (levee ? " · levée du différé" : "") + "</strong>" +
         (e.decision ? stamp(e.decision) + (e.decision === "transmis" && e.vers ? ' <span class="muted" style="font-size:.82rem">vers ' + e.vers + "</span>" : "") : '<span class="chip ' + e.acteur + '"><i></i>En cours</span>') +
         '<span class="num" style="font-size:.85rem;' + (n > lim ? "color:var(--bad);font-weight:600" : "") + '">' + n + " / " + lim + " j</span></div>" +
         '<div class="muted" style="font-size:.85rem">Reçu le ' + h(fd(e.debut)) + (e.fin ? " · sorti le " + h(fd(e.fin)) : " · toujours en attente") + (e.reprise ? " · reprise après rejet" : "") + (e.par ? " · par " + h(e.par) : "") + "</div>" +
@@ -896,7 +997,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     } else if (dec === "paye") { d.statut = "paye"; }
     else if (dec === "rejete") { d.statut = "rejete"; }
     else { d.etapes.push({ acteur: "DE", debut: date, fin: null, decision: null, motif: "" }); }
-    valider({ type: "maj", d: d }, d.id, c.acteur === "DE" ? "Dossier transmis " + (c.vers === "AC" ? "à l'" : "au ") + ACTEURS[c.vers].nom + "." : "Décision enregistrée : " + DECISIONS[dec].toLowerCase() + ".");
+    var apresDiffere = c.acteur === "DE" && d.etapes.length > 2 && d.etapes[d.etapes.length - 3].decision === "differe";
+    valider({ type: "maj", d: d }, d.id, c.acteur === "DE" ? (apresDiffere ? "Différé levé : dossier renvoyé " : "Dossier transmis ") + (c.vers === "AC" ? "à l'" : "au ") + ACTEURS[c.vers].nom + "." : "Décision enregistrée : " + DECISIONS[dec].toLowerCase() + ".");
   }
 
   function annulerDerniere(d) {
@@ -954,9 +1056,17 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       perf.push([ACTEURS[a].nom, delai(a), s.n, s.moy == null ? "" : Math.round(s.moy * 10) / 10, s.n ? s.max : "", s.n ? Math.round(s.dansDelai / s.n * 100) : "",
         a === "DE" ? "" : a === "CF" ? s.vise : s.paye, a === "DE" ? "" : s.differe, a === "DE" ? "" : s.rejete, s.encours, s.retard]);
     });
+    var diff = [["N° ordre de paiement", "Objet", "Différé par", "Rang", "Reçu le", "Date du différé", "Jours avant différé", "Motif du différé", "Renvoyé le", "Jours de levée (DE)", "Levée hors délai", "Réponse de la DE", "Décision après réexamen", "Date de décision", "Jours de réexamen", "Statut"]];
+    listeDifferes().forEach(function (x) {
+      var st = x.statut === "a_lever" ? "À lever (DE)" : x.statut === "reexamen" ? "En réexamen " + x.acteur : x.issue === "differe" ? "Différé à nouveau" : x.issue === "rejete" ? "Rejeté" : x.issue ? "Levé · " + DECISIONS[x.issue].toLowerCase() : "Clos";
+      diff.push([x.d.ref, x.d.objet, ACTEURS[x.acteur].nom, x.rang, dateFr(x.e.debut), dateFr(x.e.fin), duree(x.e), x.e.motif || "",
+        x.lev && x.lev.fin ? dateFr(x.lev.fin) : "", x.lev ? duree(x.lev) : "", x.lev ? (duree(x.lev) > delai("DE") ? "Oui" : "Non") : "", x.lev && x.lev.fin ? x.lev.motif || "" : "",
+        x.rex && x.rex.fin ? DECISIONS[x.rex.decision] : "", x.rex && x.rex.fin ? dateFr(x.rex.fin) : "", x.rex ? duree(x.rex) : "", st]);
+    });
     return [
       { nom: "Dossiers", lignes: resume, largeurs: [22, 44, 28, 20, 16, 30, 12, 9, 9, 9, 14, 30, 44], montant: 4 },
       { nom: "Historique", lignes: histo, largeurs: [22, 22, 12, 12, 12, 20, 10, 9, 10, 44, 22] },
+      { nom: "Différés", lignes: diff, largeurs: [22, 40, 20, 7, 12, 14, 12, 44, 12, 12, 12, 40, 18, 14, 12, 22] },
       { nom: "Performance", lignes: perf, largeurs: [22, 10, 14, 14, 12, 16, 13, 10, 10, 10, 10] }
     ];
   }
@@ -1085,6 +1195,9 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       else if (a === "reset") { etat.dossiers = []; valider({ type: "tout" }, null, "Toutes les données ont été effacées."); }
       return;
     }
+    var fa = ev.target.closest("[data-diff-acteur]"), fs = ev.target.closest("[data-diff-statut]");
+    if (fa) { ui.diffActeur = fa.dataset.diffActeur; render(); return; }
+    if (fs) { ui.diffStatut = fs.dataset.diffStatut; render(); return; }
     var pos = ev.target.closest("[data-pos]");
     if (pos) { ui.position = pos.dataset.pos; render(); return; }
     surOuvrir(ev);
@@ -1200,7 +1313,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   }
 
   var hash = (location.hash || "").slice(1);
-  if (["tableau", "dossiers", "rapports", "parametres"].indexOf(hash) >= 0) ui.onglet = hash;
+  if (["tableau", "dossiers", "differes", "rapports", "parametres"].indexOf(hash) >= 0) ui.onglet = hash;
 
   function demarrerLocal() { charger(); render(); }
 
