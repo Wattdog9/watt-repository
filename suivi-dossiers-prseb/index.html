@@ -230,6 +230,15 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 .chip.lecture { color: var(--muted); }
 .err .lien { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; font-size: inherit; }
 .session { color: var(--brand-ink); }
+.btn-partage { display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,.12); color: var(--brand-ink); border: 1px solid rgba(255,255,255,.35); border-radius: 6px; padding: 7px 12px; font-weight: 600; font-size: .85rem; cursor: pointer; }
+.btn-partage:hover { background: rgba(255,255,255,.22); }
+.btn-partage i { width: 8px; height: 8px; border-radius: 50%; background: var(--ac); box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+.droits { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.droits li { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); }
+.droits strong { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; }
+.lien-partage { display: flex; gap: 8px; flex-wrap: wrap; }
+.lien-partage input { flex: 1 1 260px; min-width: 0; font-family: var(--font-mono); font-size: .85rem; }
+@media (max-width: 520px) { .droits li { grid-template-columns: 1fr; gap: 2px; } }
 .session .muted, .session .chip.lecture { color: var(--brand-muted); }
 .session .lien { background: none; border: 0; padding: 4px 6px; color: var(--brand-muted); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
 @media (max-width: 1320px) { .brand small { display: none; } }
@@ -367,6 +376,17 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   // Version publiée sur claude.ai : base de données partagée de l'artefact.
   // Seul le propriétaire écrit ; les autres utilisateurs consultent.
   var cdb = { actif: false, db: null, downloads: null };
+  var LIEN_EN_LIGNE = "https://claude.ai/artifact/RwZVLb9Y6fqD8HChDaRaSp";
+
+  function fenetrePartage() {
+    ouvrirDlg('<div class="dlg"><div class="dlg-head"><div><span class="label">Version en ligne</span><h2>Partager l\'application</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>' +
+      '<div class="field"><label class="label" for="lien-app">Lien à envoyer aux autres acteurs</label><div class="lien-partage"><input type="text" id="lien-app" readonly value="' + LIEN_EN_LIGNE + '"><button class="btn primary" type="button" data-act="copier-lien">Copier le lien</button></div></div>' +
+      '<ul class="droits">' +
+      '<li><strong>Vous</strong><span>Créez, modifiez et supprimez les dossiers. Vous êtes la seule personne autorisée à écrire dans la base.</span></li>' +
+      '<li><strong>Les autres</strong><span>Consultent en lecture seule le tableau de bord, les dossiers, l\'historique et les rapports, et peuvent exporter en Excel. Leur écran se met à jour tout seul.</span></li>' +
+      '<li><strong>Connexion</strong><span>Chaque lecteur doit être connecté à un compte claude.ai (un compte gratuit suffit).</span></li>' +
+      '</ul><p class="help" style="margin:0">Pour limiter l\'accès à certaines personnes, utilisez le menu Partager de claude.ai, en haut de la page.</p></div>');
+  }
   var CLE_SESSION = "prseb-session-v1";
 
   function appel(methode, url, corps) {
@@ -560,7 +580,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   function render() {
     var zs = document.getElementById("session");
     var badge = ui.lecture ? '<span class="chip lecture">Lecture seule</span>' : "";
-    zs.innerHTML = cdb.actif ? badge + (ui.lecture ? "" : '<span class="muted">Données partagées</span>')
+    zs.innerHTML = cdb.actif ? badge + (ui.lecture ? "" : '<button class="btn-partage" id="btn-partage" title="Partager l\'application avec les autres acteurs"><i></i>Partager</button>')
       : !srv.actif ? (ui.indispo || ui.chargement ? "" : '<span class="muted">Données locales</span>')
       : srv.jeton ? badge + '<span>' + h(srv.nom) + '</span><button class="lien" id="btn-deco">Déconnexion</button>' : "";
     var connecte = (!srv.actif || !!srv.jeton) && !ui.indispo;
@@ -1125,6 +1145,11 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     var act = ev.target.closest("[data-act]"); if (!act) return;
     var a = act.dataset.act, d = trouver(dlgId());
     if (a === "close") fermerDlg();
+    else if (a === "copier-lien") {
+      var champ = document.getElementById("lien-app");
+      var choisir = function () { champ.focus(); champ.select(); toast("Lien sélectionné : copiez-le avec Ctrl+C."); };
+      try { navigator.clipboard.writeText(LIEN_EN_LIGNE).then(function () { toast("Lien copié. Collez-le dans un e-mail ou un message."); }, choisir); } catch (e) { choisir(); }
+    }
     else if (a === "modifier") formDossier(d);
     else if (a === "ask-suppr") detail(d.id, "suppr");
     else if (a === "detail") detail(d.id);
@@ -1159,6 +1184,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   // ---------- Démarrage ----------
   document.getElementById("session").addEventListener("click", function (ev) {
+    if (ev.target.closest("#btn-partage")) { fenetrePartage(); return; }
     if (ev.target.id !== "btn-deco") return;
     appel("POST", "/api/deconnexion").catch(function () { /* ignore */ });
     oublierSession();
