@@ -11,23 +11,30 @@
 <style>
 /* Mise en page : bandeau d'en-tête + circuit du dossier (DE → CF → DE → AC), puis tableaux de travail sur une colonne de 1200px */
 :root {
-  --bg: #f3f5f8;
+  /* Bleu (structure, en-tête), blanc (surfaces), orange (actions, CF), vert (paiement, AC, dans les délais) */
+  --bg: #f2f7fc;
   --surface: #ffffff;
-  --surface-2: #eef1f6;
-  --ink: #17233a;
-  --muted: #5d6a80;
-  --line: #d6dce6;
-  --accent: #1f4f8f;
+  --surface-2: #e9f1fa;
+  --ink: #0f2540;
+  --muted: #50647d;
+  --line: #d3e0ee;
+  --brand: #0d4f8b;
+  --brand-ink: #ffffff;
+  --brand-muted: #cfe0f2;
+  --heading: #0d4f8b;
+  --accent: #1565c0;
   --accent-ink: #ffffff;
-  --de: #5a4a9c;
-  --cf: #a8610f;
-  --ac: #127065;
-  --ok: #1d7a3e;
-  --warn: #b07500;
-  --bad: #b3261e;
-  --ok-bg: #e5f3ea;
-  --warn-bg: #fbf0d9;
-  --bad-bg: #fbe6e4;
+  --cta: #f28c28;
+  --cta-ink: #13263f;
+  --de: #1565c0;
+  --cf: #e8780c;
+  --ac: #2e8b3e;
+  --ok: #2e7d32;
+  --warn: #b86e00;
+  --bad: #c62828;
+  --ok-bg: #e6f4e8;
+  --warn-bg: #fff1e0;
+  --bad-bg: #fde7e7;
   --shadow: 0 1px 2px rgba(23,35,58,.06), 0 4px 16px rgba(23,35,58,.06);
   --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -35,17 +42,19 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1522; --surface: #172033; --surface-2: #1e2940; --ink: #e6ebf4; --muted: #9aa6bb; --line: #2c3953;
-    --accent: #7fa8e6; --accent-ink: #0f1522; --de: #a99ae6; --cf: #e3a356; --ac: #4fc2b1;
-    --ok: #5fcb84; --warn: #e8b64c; --bad: #f08079; --ok-bg: #173325; --warn-bg: #3a2e12; --bad-bg: #3d1c1c;
+    --bg: #0b1a2c; --surface: #11243b; --surface-2: #18304d; --ink: #e7eef7; --muted: #9db0c6; --line: #24405f;
+    --brand: #0a3a66; --brand-ink: #ffffff; --brand-muted: #a9c2dd; --heading: #9cc8ff;
+    --accent: #6fb1ff; --accent-ink: #0b1a2c; --cta: #f5973a; --cta-ink: #13263f; --de: #6fb1ff; --cf: #f5a04d; --ac: #5cc76a;
+    --ok: #66c97a; --warn: #f0b34a; --bad: #ff8a80; --ok-bg: #12301c; --warn-bg: #3a2a10; --bad-bg: #3d1818;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f1522; --surface: #172033; --surface-2: #1e2940; --ink: #e6ebf4; --muted: #9aa6bb; --line: #2c3953;
-  --accent: #7fa8e6; --accent-ink: #0f1522; --de: #a99ae6; --cf: #e3a356; --ac: #4fc2b1;
-  --ok: #5fcb84; --warn: #e8b64c; --bad: #f08079; --ok-bg: #173325; --warn-bg: #3a2e12; --bad-bg: #3d1c1c;
+  --bg: #0b1a2c; --surface: #11243b; --surface-2: #18304d; --ink: #e7eef7; --muted: #9db0c6; --line: #24405f;
+  --brand: #0a3a66; --brand-ink: #ffffff; --brand-muted: #a9c2dd; --heading: #9cc8ff;
+  --accent: #6fb1ff; --accent-ink: #0b1a2c; --cta: #f5973a; --cta-ink: #13263f; --de: #6fb1ff; --cf: #f5a04d; --ac: #5cc76a;
+  --ok: #66c97a; --warn: #f0b34a; --bad: #ff8a80; --ok-bg: #12301c; --warn-bg: #3a2a10; --bad-bg: #3d1818;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
   color-scheme: dark;
 }
@@ -53,10 +62,10 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--brand); }
 .wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: .01em; text-wrap: balance; margin: 0; line-height: 1.15; }
-h2 { font-size: 1.6rem; }
+h2 { font-size: 1.6rem; color: var(--heading); }
 h3 { font-size: 1.2rem; }
 .mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); }
@@ -65,20 +74,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* En-tête */
-header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--brand); color: var(--brand-ink); border-bottom: 3px solid var(--cta); }
 .top-inner { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-mark { width: 34px; height: 34px; border-radius: 6px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 1rem; flex: none; }
+.brand-mark { width: 34px; height: 34px; border-radius: 6px; background: var(--cta); color: var(--cta-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: 1rem; flex: none; }
 .brand h1 { font-size: 1.35rem; }
-.brand small { display: block; color: var(--muted); font-size: .78rem; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
+.brand small { display: block; color: var(--brand-muted); font-size: .78rem; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
 nav.tabs { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
-nav.tabs button { background: none; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: .9rem; }
-nav.tabs button:hover { background: var(--surface-2); color: var(--ink); }
-nav.tabs button[aria-current="page"] { color: var(--accent); background: var(--surface-2); }
+nav.tabs button { background: none; border: 0; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--brand-muted); font-weight: 600; font-size: .9rem; }
+nav.tabs button:hover { background: rgba(255,255,255,.12); color: var(--brand-ink); }
+nav.tabs button[aria-current="page"] { color: var(--brand-ink); background: rgba(255,255,255,.16); box-shadow: inset 0 -3px 0 var(--cta); border-radius: 6px 6px 0 0; }
+header.top :focus-visible { outline-color: var(--cta); }
 
 .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .9rem; white-space: nowrap; }
 .btn:hover { border-color: var(--accent); }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary { background: var(--cta); border-color: var(--cta); color: var(--cta-ink); }
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
 .btn.small { padding: 5px 10px; font-size: .82rem; }
@@ -114,7 +124,9 @@ section.panel { background: var(--surface); border: 1px solid var(--line); borde
 /* Indicateurs */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .kpi { padding: 14px 16px; border-radius: 8px; background: var(--surface-2); display: grid; gap: 2px; }
-.kpi .v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 500; }
+.kpi .v { font-family: var(--font-mono); font-size: 1.6rem; font-weight: 500; color: var(--heading); }
+.kpi.vert { background: var(--ok-bg); } .kpi.vert .v { color: var(--ok); }
+.kpi.orange { background: var(--warn-bg); } .kpi.orange .v { color: var(--warn); }
 .kpi .v small { font-size: .85rem; color: var(--muted); }
 
 /* Barres de délai */
@@ -217,7 +229,9 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 .session { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; }
 .chip.lecture { color: var(--muted); }
 .err .lien { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; font-size: inherit; }
-.session .lien { background: none; border: 0; padding: 4px 6px; color: var(--accent); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
+.session { color: var(--brand-ink); }
+.session .muted, .session .chip.lecture { color: var(--brand-muted); }
+.session .lien { background: none; border: 0; padding: 4px 6px; color: var(--brand-muted); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
 @media (max-width: 1320px) { .brand small { display: none; } }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
@@ -617,10 +631,11 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     etat.dossiers.forEach(function (d) { d.etapes.forEach(function (e) { if (e.fin) { toutes.push(e); if (duree(e) <= delai(e.acteur)) dansDelai++; } }); });
     var totPayes = etat.dossiers.filter(function (d) { return d.statut === "paye"; });
     var moyCycle = totPayes.length ? totPayes.reduce(function (s, d) { return s + dureeTotale(d); }, 0) / totPayes.length : null;
+    var nbEnRetard = actifs.filter(function (d) { return niveau(courante(d)) === "retard"; }).length;
     html += '<section class="panel"><div class="panel-head"><h2>Indicateurs</h2></div><div class="kpis">' +
       kpi("Dossiers en cours", actifs.length, "") +
-      kpi("En retard", actifs.filter(function (d) { return niveau(courante(d)) === "retard"; }).length, "dossier(s)") +
-      kpi("Étapes dans les délais", toutes.length ? Math.round(dansDelai / toutes.length * 100) : "—", toutes.length ? "%" : "") +
+      kpi("En retard", nbEnRetard, "dossier(s)", nbEnRetard ? "orange" : "") +
+      kpi("Étapes dans les délais", toutes.length ? Math.round(dansDelai / toutes.length * 100) : "—", toutes.length ? "%" : "", "vert") +
       kpi("Délai moyen CF", f1(st.CF.moy), "j ouvr.") +
       kpi("Délai moyen AC", f1(st.AC.moy), "j ouvr.") +
       kpi("Cycle complet moyen", f1(moyCycle), "j ouvr.") +
@@ -642,7 +657,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     html += '<section class="panel"><div class="panel-head"><h3>Délai moyen de traitement</h3><span class="muted">étapes terminées</span></div>' + barres(st) + "</section></div>";
     return html;
   }
-  function kpi(l, v, u) { return '<div class="kpi"><span class="label">' + l + '</span><span class="v">' + v + (u ? " <small>" + u + "</small>" : "") + "</span></div>"; }
+  function kpi(l, v, u, cls) { return '<div class="kpi' + (cls ? " " + cls : "") + '"><span class="label">' + l + '</span><span class="v">' + v + (u ? " <small>" + u + "</small>" : "") + "</span></div>"; }
 
   function barres(st) {
     var max = Math.max(10, Math.ceil(Math.max(st.DE.max || 0, st.CF.max || 0, st.AC.max || 0)));
@@ -724,7 +739,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     });
     html += "</tbody></table></div></section>";
 
-    html += '<section class="panel"><div class="panel-head"><h2>Temps passé par dossier</h2><div class="filters" style="margin:0"><button class="btn small" data-act="export-csv">Exporter en CSV (Excel)</button></div></div>';
+    html += '<section class="panel"><div class="panel-head"><h2>Temps passé par dossier</h2><div class="filters" style="margin:0"><button class="btn small" data-act="export-xlsx">Exporter en Excel</button></div></div>';
     html += '<div class="table-wrap"><table><thead><tr><th>N° OP</th><th>Objet</th><th>Situation</th><th class="r">DE</th><th class="r">CF</th><th class="r">AC</th><th class="r">Total</th><th class="r">Allers-retours CF</th></tr></thead><tbody>';
     etat.dossiers.slice().sort(triOP).forEach(function (d) {
       var nbCF = d.etapes.filter(function (e) { return e.acteur === "CF"; }).length;
@@ -751,7 +766,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     html += (ui.lecture ? "" : '<div class="actions field full"><button class="btn primary" type="submit">Enregistrer les paramètres</button></div>') + '</fieldset></form></section>';
 
     html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">' + (cdb.actif ? (ui.lecture ? "Vous pouvez exporter une copie des dossiers pour les ouvrir dans Excel ou les archiver." : "Les données sont enregistrées en ligne dans la base partagée de l\'application, accessible de partout. Exportez une sauvegarde régulièrement ; l\'import remplace tous les dossiers en ligne.") : srv.actif ? "Les données sont partagées sur le serveur, qui en garde une copie chaque jour. Vous pouvez aussi exporter une sauvegarde ou importer celle d\'un poste utilisé auparavant ; l\'import remplace toutes les données du serveur." : "Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.") + '</p>' +
-      '<div class="filters"><button class="btn" data-act="export-json">Exporter une sauvegarde (JSON)</button>' + (ui.lecture ? "" : '<label class="btn" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button>') + '</div>' +
+      '<div class="filters"><button class="btn" data-act="export-xlsx">Exporter en Excel (.xlsx)</button><button class="btn" data-act="export-json">Exporter en JSON</button>' + (ui.lecture ? "" : '<label class="btn" for="import-file">Importer une sauvegarde (JSON)</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button>') + '</div>' +
       '<div id="zone-export"></div><div id="zone-reset"></div></section>';
     return html;
   }
@@ -892,15 +907,128 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
     } catch (e) { /* téléchargement bloqué : la zone de copie reste disponible */ }
   }
-  function csv() {
-    var lignes = [["N° ordre de paiement", "Objet", "Bénéficiaire", "Nature", "Montant", "Situation", "Arrivée DE", "Jours DE", "Jours CF", "Jours AC", "Durée totale (j ouvrables)", "Dernière décision", "Motif"]];
-    etat.dossiers.forEach(function (d) {
-      var p = position(d);
+  // ---------- Export Excel (.xlsx) ----------
+  // Classeur Office Open XML écrit directement (archive ZIP sans compression) :
+  // aucune bibliothèque externe, fonctionne aussi hors connexion.
+  function dateFr(s) { return s ? s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4) : ""; }
+  function situation(d) { var p = position(d); return p === "paye" ? "Payé" : p === "rejete" ? "Rejeté" : "En cours (" + ACTEURS[p].nom + ")"; }
+
+  function feuillesExcel() {
+    var dossiers = etat.dossiers.slice().sort(triOP);
+    var resume = [["N° ordre de paiement", "Objet", "Bénéficiaire", "Nature", "Montant (" + etat.params.devise + ")", "Situation", "Arrivée DE", "Jours DE", "Jours CF", "Jours AC", "Durée totale (j ouvrables)", "Dernière décision", "Motif"]];
+    var histo = [["N° ordre de paiement", "Acteur", "Reçu le", "Sorti le", "Décision", "Transmis vers", "Jours ouvrables", "Délai (j)", "Hors délai", "Motif / observations", "Saisi par"]];
+    dossiers.forEach(function (d) {
       var dern = d.etapes.slice().reverse().filter(function (e) { return e.decision && e.decision !== "transmis"; })[0];
-      lignes.push([d.ref, d.objet, d.beneficiaire, d.nature, d.montant, p === "paye" ? "Payé" : p === "rejete" ? "Rejeté" : "En cours (" + p + ")", d.etapes[0].debut,
-        cumulActeur(d, "DE"), cumulActeur(d, "CF"), cumulActeur(d, "AC"), dureeTotale(d), dern ? dern.acteur + " : " + DECISIONS[dern.decision] : "", dern ? dern.motif : ""]);
+      resume.push([d.ref, d.objet, d.beneficiaire, d.nature, d.montant === "" ? "" : d.montant, situation(d), dateFr(d.etapes[0].debut),
+        cumulActeur(d, "DE"), cumulActeur(d, "CF"), cumulActeur(d, "AC"), dureeTotale(d), dern ? ACTEURS[dern.acteur].nom + " : " + DECISIONS[dern.decision] : "", dern ? dern.motif : ""]);
+      d.etapes.forEach(function (e) {
+        var n = duree(e);
+        histo.push([d.ref, ACTEURS[e.acteur].nom, dateFr(e.debut), e.fin ? dateFr(e.fin) : "En attente", e.decision ? DECISIONS[e.decision] : "En cours",
+          e.vers ? ACTEURS[e.vers].nom : "", n, delai(e.acteur), n > delai(e.acteur) ? "Oui" : "Non", e.motif || "", e.par || ""]);
+      });
     });
-    return "﻿" + lignes.map(function (l) { return l.map(function (v) { v = String(v == null ? "" : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(";"); }).join("\r\n");
+    var st = statsActeurs(etat.dossiers);
+    var perf = [["Acteur", "Délai (j)", "Étapes traitées", "Délai moyen (j)", "Délai max (j)", "Dans les délais (%)", "Visés / payés", "Différés", "Rejetés", "En cours", "En retard"]];
+    ["DE", "CF", "AC"].forEach(function (a) {
+      var s = st[a];
+      perf.push([ACTEURS[a].nom, delai(a), s.n, s.moy == null ? "" : Math.round(s.moy * 10) / 10, s.n ? s.max : "", s.n ? Math.round(s.dansDelai / s.n * 100) : "",
+        a === "DE" ? "" : a === "CF" ? s.vise : s.paye, a === "DE" ? "" : s.differe, a === "DE" ? "" : s.rejete, s.encours, s.retard]);
+    });
+    return [
+      { nom: "Dossiers", lignes: resume, largeurs: [22, 44, 28, 20, 16, 30, 12, 9, 9, 9, 14, 30, 44], montant: 4 },
+      { nom: "Historique", lignes: histo, largeurs: [22, 22, 12, 12, 12, 20, 10, 9, 10, 44, 22] },
+      { nom: "Performance", lignes: perf, largeurs: [22, 10, 14, 14, 12, 16, 13, 10, 10, 10, 10] }
+    ];
+  }
+
+  function xml(s) {
+    return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
+  }
+  function colonne(i) { var s = ""; i++; while (i > 0) { var m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
+
+  function feuilleXml(f) {
+    var lignes = f.lignes.map(function (l, r) {
+      return '<row r="' + (r + 1) + '">' + l.map(function (v, c) {
+        var ref = colonne(c) + (r + 1);
+        if (r === 0) return '<c r="' + ref + '" t="inlineStr" s="1"><is><t>' + xml(v) + "</t></is></c>";
+        if (typeof v === "number" && isFinite(v)) return '<c r="' + ref + '"' + (c === f.montant ? ' s="2"' : "") + "><v>" + v + "</v></c>";
+        if (v === "" || v == null) return "";
+        return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + xml(v) + "</t></is></c>";
+      }).join("") + "</row>";
+    }).join("");
+    var cols = f.largeurs.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join("");
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      "<cols>" + cols + "</cols><sheetData>" + lignes + "</sheetData></worksheet>";
+  }
+
+  function classeurExcel() {
+    var feuilles = feuillesExcel();
+    var NS = "http://schemas.openxmlformats.org";
+    var fichiers = [
+      ["[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="' + NS + '/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        feuilles.map(function (f, i) { return '<Override PartName="/xl/worksheets/sheet' + (i + 1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'; }).join("") + "</Types>"],
+      ["_rels/.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + NS + '/package/2006/relationships"><Relationship Id="rId1" Type="' + NS + '/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ["xl/workbook.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="' + NS + '/spreadsheetml/2006/main" xmlns:r="' + NS + '/officeDocument/2006/relationships"><sheets>' +
+        feuilles.map(function (f, i) { return '<sheet name="' + f.nom + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join("") + "</sheets></workbook>"],
+      ["xl/_rels/workbook.xml.rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="' + NS + '/package/2006/relationships">' +
+        feuilles.map(function (f, i) { return '<Relationship Id="rId' + (i + 1) + '" Type="' + NS + '/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i + 1) + '.xml"/>'; }).join("") +
+        '<Relationship Id="rId' + (feuilles.length + 1) + '" Type="' + NS + '/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+      ["xl/styles.xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="' + NS + '/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>' +
+        '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
+        '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0D4F8B"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+        '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+        '<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>' +
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>']
+    ];
+    feuilles.forEach(function (f, i) { fichiers.push(["xl/worksheets/sheet" + (i + 1) + ".xml", feuilleXml(f)]); });
+    return zip(fichiers);
+  }
+
+  var tableCrc = null;
+  function crc32(octets) {
+    if (!tableCrc) {
+      tableCrc = [];
+      for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; tableCrc[n] = c >>> 0; }
+    }
+    var crc = 0xFFFFFFFF;
+    for (var i = 0; i < octets.length; i++) crc = tableCrc[(crc ^ octets[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  // Archive ZIP « stockée » (méthode 0) : suffisante pour un classeur Excel.
+  function zip(fichiers) {
+    var enc = new TextEncoder(), parts = [], central = [], decalage = 0;
+    function u16(v) { return [v & 0xFF, (v >>> 8) & 0xFF]; }
+    function u32(v) { return [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]; }
+    fichiers.forEach(function (f) {
+      var nom = enc.encode(f[0]), donnees = enc.encode(f[1]), crc = crc32(donnees), t = donnees.length;
+      var entete = [].concat([0x50, 0x4B, 0x03, 0x04], u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(t), u32(t), u16(nom.length), u16(0));
+      parts.push(new Uint8Array(entete), nom, donnees);
+      central.push(new Uint8Array([].concat([0x50, 0x4B, 0x01, 0x02], u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(t), u32(t), u16(nom.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(decalage))), nom);
+      decalage += entete.length + nom.length + t;
+    });
+    var tailleCentral = central.reduce(function (s, p) { return s + p.length; }, 0);
+    var fin = new Uint8Array([].concat([0x50, 0x4B, 0x05, 0x06], u16(0), u16(0), u16(fichiers.length), u16(fichiers.length), u32(tailleCentral), u32(decalage), u16(0)));
+    var tout = parts.concat(central, [fin]), total = tout.reduce(function (s, p) { return s + p.length; }, 0);
+    var sortie = new Uint8Array(total), pos = 0;
+    tout.forEach(function (p) { sortie.set(p, pos); pos += p.length; });
+    return sortie;
+  }
+
+  var TYPE_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  function exporterExcel() {
+    telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".xlsx", classeurExcel(), TYPE_XLSX);
+    if (!cdb.downloads) toast("Fichier Excel généré.");
+  }
+  function exporterJson() {
+    var json = JSON.stringify({ dossiers: etat.dossiers, params: etat.params }, null, 2);
+    telecharger("sauvegarde-prseb-" + aujourdhui() + ".json", json, "application/json");
+    if (!cdb.downloads) toast("Sauvegarde JSON générée.");
+    // Version en ligne sans téléchargement autorisé : le texte reste copiable.
+    if (window.claude && !cdb.downloads) {
+      var z = document.getElementById("zone-export");
+      if (z) z.innerHTML = '<div class="field" style="margin-top:12px"><label class="label" for="json-out">Le téléchargement n\'est pas disponible ici : copiez ce texte dans un fichier .json</label><textarea id="json-out" rows="6" readonly class="mono" style="font-size:.78rem">' + h(json) + "</textarea></div>";
+    }
   }
 
   // ---------- Événements ----------
@@ -930,12 +1058,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
           render(); toast(n + " dossier(s) ajouté(s) à la base partagée.");
         }, function (e) { render(); toast(e.message); });
       }
-      else if (a === "export-csv") { telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".csv", csv(), "text/csv;charset=utf-8"); if (!cdb.downloads) toast("Export CSV généré."); }
-      else if (a === "export-json") {
-        var json = JSON.stringify({ dossiers: etat.dossiers, params: etat.params }, null, 2);
-        telecharger("sauvegarde-prseb-" + aujourdhui() + ".json", json, "application/json");
-        document.getElementById("zone-export").innerHTML = '<div class="field" style="margin-top:12px"><label class="label" for="json-out">Si le téléchargement n\'a pas démarré, copiez ce texte dans un fichier .json</label><textarea id="json-out" rows="6" readonly class="mono" style="font-size:.78rem">' + h(json) + "</textarea></div>";
-      }
+      else if (a === "export-xlsx") exporterExcel();
+      else if (a === "export-json") exporterJson();
       else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers ' + (srv.actif || cdb.actif ? "partagés, pour tous les utilisateurs" : "enregistrés dans ce navigateur") + ' ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
       else if (a === "no-reset") { document.getElementById("zone-reset").innerHTML = ""; }
       else if (a === "reset") { etat.dossiers = []; valider({ type: "tout" }, null, "Toutes les données ont été effacées."); }

@@ -24,8 +24,11 @@ Chaque dossier est identifié par son **numéro d'ordre de paiement (OP)**, qui 
 - Tableau de bord : nombre de dossiers à chaque étape du circuit, retards, délais moyens par acteur comparés au délai réglementaire, liste des dossiers à relancer.
 - Liste des dossiers avec recherche par n° d'ordre de paiement, objet ou bénéficiaire, et filtres (position, retard).
 - Fiche dossier : décision avec date et motif, historique complet, échéance, annulation de la dernière action.
-- Rapports : performance par acteur sur une période, temps passé par dossier, export CSV (ouvrable dans Excel).
-- Paramètres : délais, jours fériés (fixes `MM-JJ` ou datés `AAAA-MM-JJ`), devise, sauvegarde et import JSON.
+- Rapports : performance par acteur sur une période, temps passé par dossier, export Excel.
+- Paramètres : délais, jours fériés (fixes `MM-JJ` ou datés `AAAA-MM-JJ`), devise, sauvegarde et import.
+- Sauvegardes en deux formats :
+  - **Excel (.xlsx)** : un classeur à trois onglets, « Dossiers » (un dossier par ligne), « Historique » (chaque passage DE/CF/AC avec dates, décision, durée et motif) et « Performance » (statistiques par acteur) ;
+  - **JSON** : la sauvegarde complète, la seule qui peut être réimportée dans l'application.
 
 Les durées sont comptées en jours ouvrables, du lendemain de la réception jusqu'au jour de sortie inclus, sans les week-ends ni les jours fériés déclarés.
 
@@ -37,7 +40,7 @@ L'application est publiée en ligne : https://claude.ai/artifact/RwZVLb9Y6fqD8HC
 - Seul le propriétaire de l'application peut créer, modifier ou supprimer des dossiers.
 - Toutes les autres personnes avec qui le lien est partagé consultent en **lecture seule**. Elles doivent être connectées à un compte claude.ai. Leurs écrans se mettent à jour automatiquement.
 - Les dossiers saisis auparavant dans le même navigateur peuvent être versés dans la base en un clic (bandeau en haut de la page).
-- Paramètres → « Exporter une sauvegarde » ou Rapports → « Exporter en CSV » permettent de garder une copie des données.
+- Paramètres → « Exporter en Excel (.xlsx) » ou « Exporter en JSON » permettent de garder une copie des données.
 
 ## Installation sur un serveur (données partagées)
 
