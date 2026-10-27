@@ -50,6 +50,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
@@ -214,6 +215,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 .confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; background: var(--bad-bg); border-radius: 8px; font-size: .9rem; }
 
 .session { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; }
+.chip.lecture { color: var(--muted); }
 .session .lien { background: none; border: 0; padding: 4px 6px; color: var(--accent); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
 @media (max-width: 1320px) { .brand small { display: none; } }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
@@ -321,7 +323,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   // ---------- État ----------
   var etat = { dossiers: [], params: JSON.parse(JSON.stringify(defautParams)) };
-  var ui = { onglet: "tableau", recherche: "", position: "tous", retardSeul: false, du: "", au: "" };
+  var ui = { onglet: "tableau", recherche: "", position: "tous", retardSeul: false, du: "", au: "", lecture: false, chargement: false, indispo: false };
 
   function charger() {
     try {
@@ -345,7 +347,11 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   // ---------- Serveur partagé ----------
   // Si la page est servie par server.js, les données sont partagées via l'API ;
   // sinon (fichier ouvert directement), elles restent dans ce navigateur.
-  var srv = { actif: false, jeton: null, nom: null, motDePasseRequis: false, revision: 0 };
+  var srv = { actif: false, jeton: null, nom: null, role: null, motDePasseRequis: false, revision: 0 };
+
+  // Version publiée sur claude.ai : base de données partagée de l'artefact.
+  // Seul le propriétaire écrit ; les autres utilisateurs consultent.
+  var cdb = { actif: false, db: null, downloads: null };
   var CLE_SESSION = "prseb-session-v1";
 
   function appel(methode, url, corps) {
@@ -361,7 +367,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     }, function () { throw new Error("Serveur injoignable. Vérifiez la connexion au réseau puis réessayez."); });
   }
   function oublierSession() {
-    srv.jeton = null; srv.nom = null;
+    srv.jeton = null; srv.nom = null; srv.role = null; ui.lecture = false;
     try { localStorage.removeItem(CLE_SESSION); } catch (e) { /* ignore */ }
     fermerDlg(); render();
   }
@@ -370,11 +376,42 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     etat.params = Object.assign({}, defautParams, o.params || {});
     etat.params.delais = Object.assign({}, defautParams.delais, (o.params || {}).delais || {});
     srv.revision = o.revision || 0;
+    if (o.role) { srv.role = o.role; ui.lecture = o.role === "lecture"; }
     cacheFeries = null;
   }
   function rechargerServeur() { return appel("GET", "/api/etat").then(appliquerEtat); }
 
+  function messageDb(e) {
+    if (e && e.code === "invalid_argument") return "Modification refusée : vous avez un accès en lecture seule.";
+    if (e && e.code === "quota_exceeded") return "La base de données est pleine. Supprimez d'anciens dossiers puis réessayez.";
+    return "Enregistrement impossible pour le moment. Vérifiez votre connexion puis réessayez.";
+  }
+  function propre(o) { return JSON.parse(JSON.stringify(o)); }
+  function persisterDb(op) {
+    var col = cdb.db.collection("dossiers"), p;
+    if (op.type === "creer" || op.type === "maj") {
+      op.d.modifieLe = new Date().toISOString();
+      p = col.doc(op.d.id).set(propre(op.d));
+    } else if (op.type === "suppr") p = col.doc(op.d.id).delete();
+    else if (op.type === "params") p = cdb.db.doc("config/params").set(propre(etat.params));
+    else {
+      // Remplacement complet (import, effacement) : une écriture à la fois.
+      var cibles = {};
+      etat.dossiers.forEach(function (d) { cibles[d.id] = d; });
+      p = col.get().then(function (snap) {
+        var ch = Promise.resolve();
+        snap.docs.forEach(function (doc) { if (!cibles[doc.id]) ch = ch.then(function () { return col.doc(doc.id).delete(); }); });
+        if (op.type === "tout") etat.dossiers.forEach(function (d) { ch = ch.then(function () { return col.doc(d.id).set(propre(d)); }); });
+        if (op.type === "tout") ch = ch.then(function () { return cdb.db.doc("config/params").set(propre(etat.params)); });
+        return ch;
+      });
+    }
+    return p.catch(function (e) { throw new Error(messageDb(e)); });
+  }
+
   function persister(op) {
+    if (ui.lecture) return Promise.reject(new Error("Accès en lecture seule : aucune modification n'est possible."));
+    if (cdb.actif) return persisterDb(op);
     if (!srv.actif) { sauver(); return Promise.resolve(); }
     var d = op.d, p;
     if (op.type === "creer") p = appel("POST", "/api/dossiers", { dossier: d });
@@ -507,16 +544,27 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   function render() {
     var zs = document.getElementById("session");
-    zs.innerHTML = !srv.actif ? '<span class="muted">Données locales</span>' : srv.jeton ? '<span>' + h(srv.nom) + '</span><button class="lien" id="btn-deco">Déconnexion</button>' : "";
-    var connecte = !srv.actif || !!srv.jeton;
+    var badge = ui.lecture ? '<span class="chip lecture">Lecture seule</span>' : "";
+    zs.innerHTML = cdb.actif ? badge + (ui.lecture ? "" : '<span class="muted">Données partagées</span>')
+      : !srv.actif ? (ui.indispo || ui.chargement ? "" : '<span class="muted">Données locales</span>')
+      : srv.jeton ? badge + '<span>' + h(srv.nom) + '</span><button class="lien" id="btn-deco">Déconnexion</button>' : "";
+    var connecte = (!srv.actif || !!srv.jeton) && !ui.indispo;
     document.querySelector("nav.tabs").hidden = !connecte;
-    document.getElementById("btn-nouveau").hidden = !connecte;
+    document.getElementById("btn-nouveau").hidden = !connecte || ui.lecture || ui.chargement;
+    if (ui.indispo) { app.innerHTML = '<section class="panel" style="max-width:520px;margin:40px auto 0;width:100%"><h2>Accès aux dossiers</h2><p class="help">Les dossiers du PRSEB sont réservés aux personnes avec qui l\'application a été partagée. Connectez-vous à votre compte claude.ai, puis rouvrez ce lien. Si le problème persiste, demandez l\'accès à la personne qui vous a transmis le lien.</p></section>'; return; }
+    if (ui.chargement) { app.innerHTML = '<section class="panel"><div class="empty">Chargement des dossiers…</div></section>'; return; }
     if (!connecte) { app.innerHTML = vueConnexion(); return; }
     document.querySelectorAll("nav.tabs button").forEach(function (b) {
       if (b.dataset.tab === ui.onglet) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
     var html = "";
-    if (etat.dossiers.some(function (d) { return d.exemple; })) {
+    if (cdb.actif && !ui.lecture && dossiersLocaux().length) {
+      html += '<div class="demo-banner"><span>' + dossiersLocaux().length + ' dossier(s) saisis auparavant dans ce navigateur ne sont pas encore dans la base partagée.</span><button class="btn small" data-act="migrer">Les ajouter à la base partagée</button></div>';
+    }
+    if (ui.lecture) {
+      html += '<div class="demo-banner" style="border-color:var(--line);background:var(--surface-2)"><span>Vous consultez le suivi en <strong>lecture seule</strong>. Les données se mettent à jour automatiquement.</span></div>';
+    }
+    if (!ui.lecture && etat.dossiers.some(function (d) { return d.exemple; })) {
       html += '<div class="demo-banner"><span>Les dossiers affichés sont des <strong>exemples</strong> pour découvrir l\'outil. Supprimez-les avant de saisir vos vrais dossiers.</span><button class="btn small" data-act="vider-exemples">Supprimer les exemples</button></div>';
     }
     if (ui.onglet === "tableau") html += vueTableau();
@@ -649,7 +697,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       '<div class="seg" role="group" aria-label="Position">' + segs.map(function (s) { return '<button data-pos="' + s[0] + '" aria-pressed="' + (ui.position === s[0]) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
       '<label class="check"><input type="checkbox" id="f-retard"' + (ui.retardSeul ? " checked" : "") + "> En retard uniquement</label></div>";
     if (!list.length) {
-      html += '<div class="table-wrap"><div class="empty">' + (etat.dossiers.length ? "Aucun dossier ne correspond aux filtres." : "Aucun dossier pour l'instant. Cliquez sur « Nouveau dossier » pour enregistrer le premier.") + "</div></div></section>";
+      html += '<div class="table-wrap"><div class="empty">' + (etat.dossiers.length ? "Aucun dossier ne correspond aux filtres." : ui.lecture ? "Aucun dossier n'a encore été enregistré." : "Aucun dossier pour l'instant. Cliquez sur « Nouveau dossier » pour enregistrer le premier.") + "</div></div></section>";
       return html;
     }
     html += '<div class="table-wrap"><table><thead><tr><th>Référence</th><th>Objet</th><th>Bénéficiaire</th><th class="r">Montant</th><th>Position</th><th>Délai étape</th><th>Dernière décision</th><th class="r">Durée totale</th></tr></thead><tbody>';
@@ -693,16 +741,16 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   function vueParametres() {
     var p = etat.params;
-    var html = '<section class="panel"><div class="panel-head"><h2>Paramètres</h2></div><form id="form-params" class="form-grid">';
+    var html = '<section class="panel"><div class="panel-head"><h2>Paramètres</h2></div><form id="form-params" class="form-grid"><fieldset style="display:contents"' + (ui.lecture ? " disabled" : "") + '>';
     ["DE", "CF", "AC"].forEach(function (a) {
       html += '<div class="field"><label class="label" for="p-' + a + '">Délai ' + ACTEURS[a].nom + ' (jours ouvrables)</label><input type="number" min="1" max="60" id="p-' + a + '" value="' + h(p.delais[a]) + '"></div>';
     });
     html += '<div class="field"><label class="label" for="p-devise">Devise</label><input type="text" id="p-devise" value="' + h(p.devise) + '"></div>';
     html += '<div class="field full"><label class="label" for="p-feries">Jours fériés</label><textarea id="p-feries" rows="6">' + h(p.feries) + '</textarea><span class="help">Un jour par ligne. <span class="mono">MM-JJ</span> pour un jour férié fixe chaque année (ex. <span class="mono">12-25</span>), <span class="mono">AAAA-MM-JJ</span> pour une date précise (Pâques, Tabaski, Maouloud…). Ces jours ne sont pas décomptés.</span></div>';
-    html += '<div class="actions field full"><button class="btn primary" type="submit">Enregistrer les paramètres</button></div></form></section>';
+    html += (ui.lecture ? "" : '<div class="actions field full"><button class="btn primary" type="submit">Enregistrer les paramètres</button></div>') + '</fieldset></form></section>';
 
-    html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">' + (srv.actif ? "Les données sont partagées sur le serveur, qui en garde une copie chaque jour. Vous pouvez aussi exporter une sauvegarde ou importer celle d\'un poste utilisé auparavant ; l\'import remplace toutes les données du serveur." : "Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.") + '</p>' +
-      '<div class="filters"><button class="btn" data-act="export-json">Exporter une sauvegarde (JSON)</button><label class="btn" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button></div>' +
+    html += '<section class="panel"><div class="panel-head"><h2>Sauvegarde des données</h2></div><p class="help">' + (cdb.actif ? (ui.lecture ? "Vous pouvez exporter une copie des dossiers pour les ouvrir dans Excel ou les archiver." : "Les données sont enregistrées en ligne dans la base partagée de l\'application, accessible de partout. Exportez une sauvegarde régulièrement ; l\'import remplace tous les dossiers en ligne.") : srv.actif ? "Les données sont partagées sur le serveur, qui en garde une copie chaque jour. Vous pouvez aussi exporter une sauvegarde ou importer celle d\'un poste utilisé auparavant ; l\'import remplace toutes les données du serveur." : "Les données sont enregistrées dans ce navigateur. Faites une sauvegarde régulière, et utilisez l\'import pour transférer les dossiers sur un autre poste.") + '</p>' +
+      '<div class="filters"><button class="btn" data-act="export-json">Exporter une sauvegarde (JSON)</button>' + (ui.lecture ? "" : '<label class="btn" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept=".json,application/json" hidden><button class="btn danger" data-act="ask-reset">Effacer toutes les données</button>') + '</div>' +
       '<div id="zone-export"></div><div id="zone-reset"></div></section>';
     return html;
   }
@@ -741,7 +789,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       (d.modifiePar ? '<div><div class="label">Dernière mise à jour</div>' + h(d.modifiePar) + ' <span class="muted" style="font-size:.82rem">' + h(fd(d.modifieLe.slice(0, 10))) + "</span></div>" : "") + "</div>";
 
     // Action
-    if (d.statut === "en_cours" && c) {
+    if (ui.lecture) { /* consultation seule */ }
+    else if (d.statut === "en_cours" && c) {
       var lim = delai(c.acteur);
       html += '<form class="action-box" id="form-action"><div class="panel-head" style="margin:0"><h3>' + (c.acteur === "DE" ? "Transmission" : (c.acteur === "CF" ? "Décision du contrôleur financier" : "Décision de l'agent comptable")) + "</h3>" + horloge(c) + "</div>";
       html += '<span class="muted" style="font-size:.85rem">Chez ' + ACTEURS[c.acteur].nom + " depuis le " + h(fd(c.debut)) + " · échéance le " + h(fj(ajouterJO(c.debut, lim))) + "</span>";
@@ -772,7 +821,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     });
     html += "</ol></div>";
 
-    html += '<div class="actions" style="justify-content:space-between"><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+    if (!ui.lecture) html += '<div class="actions" style="justify-content:space-between"><div style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn small" data-act="annuler-derniere"' + (d.etapes.length < 2 && !d.etapes[0].fin ? " disabled" : "") + ">Annuler la dernière action</button>" +
       '<button class="btn small" data-act="modifier">Modifier</button></div><button class="btn small danger" data-act="ask-suppr">Supprimer</button></div>';
     if (extra === "suppr") html += '<div class="confirm">Supprimer définitivement le dossier ' + h(d.ref) + ' ? <button class="btn small danger" data-act="suppr">Oui, supprimer</button><button class="btn small" data-act="detail">Non</button></div>';
@@ -819,6 +868,12 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   // ---------- Exports ----------
   function telecharger(nom, contenu, type) {
+    if (cdb.downloads) {
+      cdb.downloads.save({ filename: nom, data: new Blob([contenu], { type: type }) }).then(function () { toast("Fichier enregistré."); }, function (e) {
+        if (!e || e.code !== "declined") toast("Le téléchargement n'a pas pu se faire.");
+      });
+      return;
+    }
     try {
       var blob = new Blob([contenu], { type: type });
       var a = document.createElement("a");
@@ -856,13 +911,22 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (act) {
       var a = act.dataset.act;
       if (a === "vider-exemples") { etat.dossiers = etat.dossiers.filter(function (d) { return !d.exemple; }); valider({ type: "exemples" }, null, "Exemples supprimés."); }
-      else if (a === "export-csv") { telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".csv", csv(), "text/csv;charset=utf-8"); toast("Export CSV généré."); }
+      else if (a === "migrer") {
+        var locaux = dossiersLocaux(), ch = Promise.resolve(), n = 0;
+        act.disabled = true;
+        locaux.forEach(function (d) { ch = ch.then(function () { return persisterDb({ type: "creer", d: d }).then(function () { n++; }); }); });
+        ch.then(function () {
+          try { localStorage.removeItem(CLE); } catch (e) { /* ignore */ }
+          render(); toast(n + " dossier(s) ajouté(s) à la base partagée.");
+        }, function (e) { render(); toast(e.message); });
+      }
+      else if (a === "export-csv") { telecharger("suivi-dossiers-prseb-" + aujourdhui() + ".csv", csv(), "text/csv;charset=utf-8"); if (!cdb.downloads) toast("Export CSV généré."); }
       else if (a === "export-json") {
         var json = JSON.stringify({ dossiers: etat.dossiers, params: etat.params }, null, 2);
         telecharger("sauvegarde-prseb-" + aujourdhui() + ".json", json, "application/json");
         document.getElementById("zone-export").innerHTML = '<div class="field" style="margin-top:12px"><label class="label" for="json-out">Si le téléchargement n\'a pas démarré, copiez ce texte dans un fichier .json</label><textarea id="json-out" rows="6" readonly class="mono" style="font-size:.78rem">' + h(json) + "</textarea></div>";
       }
-      else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers ' + (srv.actif ? "du serveur, pour tous les utilisateurs" : "enregistrés dans ce navigateur") + ' ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
+      else if (a === "ask-reset") { document.getElementById("zone-reset").innerHTML = '<div class="confirm" style="margin-top:12px">Effacer tous les dossiers ' + (srv.actif || cdb.actif ? "partagés, pour tous les utilisateurs" : "enregistrés dans ce navigateur") + ' ? <button class="btn small danger" data-act="reset">Oui, tout effacer</button><button class="btn small" data-act="no-reset">Non</button></div>'; }
       else if (a === "no-reset") { document.getElementById("zone-reset").innerHTML = ""; }
       else if (a === "reset") { etat.dossiers = []; valider({ type: "tout" }, null, "Toutes les données ont été effacées."); }
       return;
@@ -904,7 +968,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       var err = document.getElementById("c-err"), btn = ev.target.querySelector("button");
       btn.disabled = true;
       appel("POST", "/api/connexion", { nom: nom, motDePasse: mdp ? mdp.value : "" }).then(function (r) {
-        srv.jeton = r.jeton; srv.nom = r.nom;
+        srv.jeton = r.jeton; srv.nom = r.nom; srv.role = r.role; ui.lecture = r.role === "lecture";
         try { localStorage.setItem(CLE_SESSION, JSON.stringify(r)); localStorage.setItem(CLE_SESSION + "-nom", r.nom); } catch (e) { /* ignore */ }
         return rechargerServeur();
       }).then(function () { render(); }, function (e) { err.textContent = e.message; err.hidden = false; btn.disabled = false; });
@@ -963,11 +1027,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (!srv.actif || !srv.jeton || document.hidden) return;
     appel("GET", "/api/revision").then(function (r) {
       if (r.revision === srv.revision) return;
-      return rechargerServeur().then(function () {
-        var actif = document.activeElement;
-        if (actif && app.contains(actif) && /INPUT|TEXTAREA|SELECT/.test(actif.tagName)) return;
-        render();
-      });
+      return rechargerServeur().then(rafraichirDistant);
     }).catch(function () { /* nouvel essai au prochain passage */ });
   }
 
@@ -975,13 +1035,65 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   if (["tableau", "dossiers", "rapports", "parametres"].indexOf(hash) >= 0) ui.onglet = hash;
 
   function demarrerLocal() { charger(); render(); }
-  if (/^https?:$/.test(location.protocol)) {
+
+  // Dossiers saisis dans ce navigateur (hors exemples), à verser dans la base partagée.
+  function dossiersLocaux() {
+    try {
+      var o = JSON.parse(localStorage.getItem(CLE) || "null");
+      var deja = {};
+      etat.dossiers.forEach(function (d) { deja[d.id] = true; deja["r:" + d.ref] = true; });
+      return o && Array.isArray(o.dossiers) ? o.dossiers.filter(function (d) { return !d.exemple && !deja[d.id] && !deja["r:" + d.ref]; }) : [];
+    } catch (e) { return []; }
+  }
+
+  // Après une mise à jour venue d'un autre poste : rafraîchit sans gêner une saisie en cours.
+  function rafraichirDistant() {
+    var actif = document.activeElement;
+    if (actif && app.contains(actif) && /INPUT|TEXTAREA|SELECT/.test(actif.tagName)) return;
+    render();
+    if (dlg.open && !dlg.querySelector("form, .confirm")) {
+      var id = dlgId();
+      if (id && trouver(id)) detail(id); else if (id) fermerDlg();
+    } else if (dlg.open && ui.lecture) { var i2 = dlgId(); if (i2 && trouver(i2)) detail(i2); }
+  }
+
+  function demarrerClaude() {
+    ui.chargement = true; render();
+    Promise.all([window.claude.use("db"), window.claude.use("user"), window.claude.use("downloads")]).then(function (r) {
+      var db = r[0], user = r[1];
+      cdb.downloads = r[2];
+      if (!db) { ui.chargement = false; ui.indispo = true; render(); return; }
+      cdb.actif = true; cdb.db = db;
+      ui.lecture = true;
+      var proprio = user ? user.isOwner() : Promise.resolve(false);
+      var recu = { dossiers: false, params: false };
+      function pret() {
+        if (!recu.dossiers || !recu.params) return;
+        if (ui.chargement) { ui.chargement = false; render(); } else rafraichirDistant();
+      }
+      proprio.then(function (ok) { ui.lecture = !ok; if (!ui.chargement) render(); });
+      db.collection("dossiers").onSnapshot(function (snap) {
+        etat.dossiers = snap.docs.map(function (d) { return propre(d.data()); });
+        recu.dossiers = true; pret();
+      }, function () { toast("La connexion à la base a été interrompue. Rechargez la page."); });
+      db.doc("config/params").onSnapshot(function (snap) {
+        var o = snap.exists ? propre(snap.data()) : {};
+        etat.params = Object.assign({}, defautParams, o);
+        etat.params.delais = Object.assign({}, defautParams.delais, o.delais || {});
+        cacheFeries = null;
+        recu.params = true; pret();
+      }, function () { /* signalé par l'abonnement aux dossiers */ });
+    });
+  }
+
+  if (window.claude && typeof window.claude.use === "function") demarrerClaude();
+  else if (/^https?:$/.test(location.protocol)) {
     fetch("/api/config").then(function (r) {
       if (!r.ok || (r.headers.get("Content-Type") || "").indexOf("json") < 0) throw new Error();
       return r.json();
     }).then(function (cfg) {
       srv.actif = true; srv.motDePasseRequis = !!cfg.motDePasseRequis;
-      try { var s = JSON.parse(localStorage.getItem(CLE_SESSION) || "null"); if (s) { srv.jeton = s.jeton; srv.nom = s.nom; } } catch (e) { /* ignore */ }
+      try { var s = JSON.parse(localStorage.getItem(CLE_SESSION) || "null"); if (s) { srv.jeton = s.jeton; srv.nom = s.nom; srv.role = s.role; ui.lecture = s.role === "lecture"; } } catch (e) { /* ignore */ }
       setInterval(surveiller, 15000);
       document.addEventListener("visibilitychange", surveiller);
       if (!srv.jeton) { render(); return; }

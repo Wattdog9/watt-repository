@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const HOTE = process.env.HOTE || "0.0.0.0";
 const MOT_DE_PASSE = process.env.MOT_DE_PASSE || "";
+const MOT_DE_PASSE_LECTURE = process.env.MOT_DE_PASSE_LECTURE || "";
 const DOSSIER_DONNEES = path.resolve(process.env.DOSSIER_DONNEES || path.join(__dirname, "donnees"));
 const FICHIER = path.join(DOSSIER_DONNEES, "donnees.json");
 const DOSSIER_SAUVEGARDES = path.join(DOSSIER_DONNEES, "sauvegardes");
@@ -24,6 +25,11 @@ const PARAMS_DEFAUT = {
   feries: "01-01\n05-01\n08-15\n11-01\n12-25",
   devise: "FCFA"
 };
+
+if (MOT_DE_PASSE_LECTURE && !MOT_DE_PASSE) {
+  console.error("MOT_DE_PASSE_LECTURE exige aussi MOT_DE_PASSE (accès en modification).");
+  process.exit(1);
+}
 
 // ---------- Stockage ----------
 fs.mkdirSync(DOSSIER_SAUVEGARDES, { recursive: true });
@@ -101,12 +107,12 @@ function egalSecurise(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
-function utilisateur(req) {
+function session(req) {
   const m = /^Bearer (.+)$/.exec(req.headers.authorization || "");
   if (!m) return null;
   const s = base.sessions[m[1]];
   if (!s || s.expire < Date.now()) return null;
-  return s.nom;
+  return s;
 }
 
 function purgerSessions() {
@@ -156,18 +162,25 @@ async function api(req, res, url) {
     const b = await lireCorps(req);
     const nom = String(b.nom || "").trim().slice(0, 60);
     if (!nom) return repondre(res, 400, { erreur: "Indiquez votre nom." });
-    if (MOT_DE_PASSE && !egalSecurise(b.motDePasse || "", MOT_DE_PASSE)) {
-      return repondre(res, 401, { erreur: "Mot de passe incorrect." });
+    let role = "ecriture";
+    if (MOT_DE_PASSE) {
+      // Les deux comparaisons sont toujours faites, pour ne rien laisser deviner par le temps de réponse.
+      const ecriture = egalSecurise(b.motDePasse || "", MOT_DE_PASSE);
+      const lecture = !!MOT_DE_PASSE_LECTURE && egalSecurise(b.motDePasse || "", MOT_DE_PASSE_LECTURE);
+      if (!ecriture && !lecture) return repondre(res, 401, { erreur: "Mot de passe incorrect." });
+      role = ecriture ? "ecriture" : "lecture";
     }
     purgerSessions();
     const jeton = crypto.randomBytes(24).toString("hex");
-    base.sessions[jeton] = { nom, expire: Date.now() + DUREE_SESSION };
+    base.sessions[jeton] = { nom, role, expire: Date.now() + DUREE_SESSION };
     enregistrer(false);
-    return repondre(res, 200, { jeton, nom });
+    return repondre(res, 200, { jeton, nom, role });
   }
 
-  const nom = utilisateur(req);
-  if (!nom) return repondre(res, 401, { erreur: "Session expirée. Reconnectez-vous." });
+  const s = session(req);
+  if (!s) return repondre(res, 401, { erreur: "Session expirée. Reconnectez-vous." });
+  const nom = s.nom;
+  const role = s.role || "ecriture";
 
   if (route === "POST /api/deconnexion") {
     delete base.sessions[(req.headers.authorization || "").slice(7)];
@@ -176,7 +189,9 @@ async function api(req, res, url) {
   }
 
   if (route === "GET /api/revision") return repondre(res, 200, { revision: base.revision });
-  if (route === "GET /api/etat") return repondre(res, 200, etatPublic());
+  if (route === "GET /api/etat") return repondre(res, 200, Object.assign(etatPublic(), { role }));
+
+  if (role !== "ecriture") return repondre(res, 403, { erreur: "Accès en lecture seule : aucune modification n'est possible." });
 
   if (route === "POST /api/dossiers") {
     const { dossier } = await lireCorps(req);
@@ -240,7 +255,7 @@ async function api(req, res, url) {
     base.dossiers = b.dossiers.map((d) => Object.assign({}, d, { version: (d.version || 0) + 1, modifiePar: nom, modifieLe: new Date().toISOString() }));
     if (b.params) base.params = paramsValides(b.params) || base.params;
     enregistrer();
-    return repondre(res, 200, etatPublic());
+    return repondre(res, 200, Object.assign(etatPublic(), { role }));
   }
 
   return repondre(res, 404, { erreur: "Route inconnue." });
@@ -265,5 +280,6 @@ const serveur = http.createServer(async (req, res) => {
 serveur.listen(PORT, HOTE, () => {
   console.log("Suivi des dossiers PRSEB : http://localhost:" + PORT);
   console.log("Données : " + FICHIER);
+  if (MOT_DE_PASSE_LECTURE) console.log("Accès en lecture seule activé (MOT_DE_PASSE_LECTURE).");
   if (!MOT_DE_PASSE) console.log("Attention : aucun mot de passe défini (variable MOT_DE_PASSE). Toute personne du réseau peut accéder aux données.");
 });

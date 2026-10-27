@@ -27,6 +27,16 @@ Chaque acteur dispose de **5 jours ouvrables** (modifiable dans les Paramètres)
 
 Les durées sont comptées en jours ouvrables, du lendemain de la réception jusqu'au jour de sortie inclus, sans les week-ends ni les jours fériés déclarés.
 
+## Version en ligne (claude.ai)
+
+L'application est publiée en ligne : https://claude.ai/artifact/RwZVLb9Y6fqD8HChDaRaSp
+
+- Les dossiers sont enregistrés dans la base de données de l'application, accessible à tout moment et depuis n'importe quel appareil.
+- Seul le propriétaire de l'application peut créer, modifier ou supprimer des dossiers.
+- Toutes les autres personnes avec qui le lien est partagé consultent en **lecture seule**. Elles doivent être connectées à un compte claude.ai. Leurs écrans se mettent à jour automatiquement.
+- Les dossiers saisis auparavant dans le même navigateur peuvent être versés dans la base en un clic (bandeau en haut de la page).
+- Paramètres → « Exporter une sauvegarde » ou Rapports → « Exporter en CSV » permettent de garder une copie des données.
+
 ## Installation sur un serveur (données partagées)
 
 Le serveur permet au secrétariat de la DE, au Contrôle financier et à l'Agent comptable de travailler sur les **mêmes dossiers**, depuis plusieurs postes.
@@ -46,11 +56,12 @@ $env:MOT_DE_PASSE = "choisissez-un-mot-de-passe"
 node server.js
 ```
 
-Les collègues ouvrent ensuite `http://ADRESSE-IP-DU-SERVEUR:3000` dans leur navigateur, saisissent leur nom et le mot de passe commun. Le nom de la personne est enregistré sur chaque transmission et chaque décision.
+Les collègues ouvrent ensuite `http://ADRESSE-IP-DU-SERVEUR:3000` dans leur navigateur et saisissent leur nom et le mot de passe. Pour donner un accès en consultation seulement, lancez aussi `MOT_DE_PASSE_LECTURE="autre-mot-de-passe"` et communiquez ce second mot de passe aux personnes concernées. Le nom de la personne est enregistré sur chaque transmission et chaque décision.
 
 | Variable | Rôle | Par défaut |
 |---|---|---|
-| `MOT_DE_PASSE` | Mot de passe commun demandé à la connexion. Sans lui, toute personne du réseau peut accéder aux données. | aucun |
+| `MOT_DE_PASSE` | Mot de passe donnant le droit de modifier. Sans lui, toute personne du réseau peut accéder aux données et les modifier. | aucun |
+| `MOT_DE_PASSE_LECTURE` | Second mot de passe, pour consulter sans pouvoir rien modifier (nécessite `MOT_DE_PASSE`). | aucun |
 | `PORT` | Port d'écoute | `3000` |
 | `HOTE` | Adresse d'écoute | `0.0.0.0` (tout le réseau local) |
 | `DOSSIER_DONNEES` | Dossier où sont stockées les données | `./donnees` |
