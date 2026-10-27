@@ -216,6 +216,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
 .session { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; }
 .chip.lecture { color: var(--muted); }
+.err .lien { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; font-size: inherit; }
 .session .lien { background: none; border: 0; padding: 4px 6px; color: var(--accent); cursor: pointer; font-weight: 600; font-size: .82rem; text-decoration: underline; }
 @media (max-width: 1320px) { .brand small { display: none; } }
 .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
@@ -483,18 +484,18 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   // ---------- Exemples ----------
   function exemples() {
     var t = aujourdhui();
-    // Chaque scénario : [référence, objet, bénéficiaire, montant, nature, [[acteur, durée JO, décision, motif], ...]]
+    // Chaque scénario : [n° d'ordre de paiement, objet, bénéficiaire, montant, nature, [[acteur, durée JO, décision, motif], ...]]
     var sc = [
-      ["PRSEB-2026-0144", "Reprographie des guides pédagogiques", "Imprimerie du Plateau", 3850000, "Marché / contrat", [["DE", 1, null]]],
-      ["PRSEB-2026-0141", "Acquisition de fournitures scolaires, lot 2", "SODIFOUR SARL", 24500000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 2, null]]],
-      ["PRSEB-2026-0138", "Paiement prestation de formation des enseignants", "Cabinet EDUCONSEIL", 12750000, "Formation / atelier", [["DE", 3, "transmis"], ["CF", 7, null]]],
-      ["PRSEB-2026-0135", "Frais de mission de supervision régionale", "Équipe de supervision", 2140000, "Frais de mission", [["DE", 1, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 3, null]]],
-      ["PRSEB-2026-0130", "Décompte n°3, construction de salles de classe", "BTP Horizon", 68300000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 4, "vise"], ["DE", 2, "transmis"], ["AC", 6, null]]],
-      ["PRSEB-2026-0127", "Atelier de validation des curricula", "Hôtel La Résidence", 5600000, "Formation / atelier", [["DE", 2, "transmis"], ["CF", 3, "differe", "Pièces justificatives incomplètes : liste de présence non signée."], ["DE", 4, null]]],
-      ["PRSEB-2026-0122", "Maintenance du parc informatique, T3", "INFOTECH Services", 4200000, "Fonctionnement", [["DE", 2, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 4, "paye"]]],
-      ["PRSEB-2026-0119", "Achat de véhicule de liaison", "AUTO PLUS", 31000000, "Marché / contrat", [["DE", 3, "transmis"], ["CF", 5, "rejete", "Dépense non inscrite au plan de passation des marchés."]]],
-      ["PRSEB-2026-0115", "Indemnités des points focaux, septembre", "Points focaux régionaux", 7800000, "Indemnités / salaires", [["DE", 2, "transmis"], ["CF", 7, "vise"], ["DE", 2, "transmis"], ["AC", 3, "paye"]]],
-      ["PRSEB-2026-0110", "Location de salle, revue à mi-parcours", "Centre de conférences", 3300000, "Formation / atelier", [["DE", 1, "transmis"], ["CF", 2, "vise"], ["DE", 1, "transmis"], ["AC", 3, "differe", "RIB du bénéficiaire à actualiser."], ["DE", 3, "transmis"], ["AC", 2, "paye"]]]
+      ["OP-2026-0144", "Reprographie des guides pédagogiques", "Imprimerie du Plateau", 3850000, "Marché / contrat", [["DE", 1, null]]],
+      ["OP-2026-0141", "Acquisition de fournitures scolaires, lot 2", "SODIFOUR SARL", 24500000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 2, null]]],
+      ["OP-2026-0138", "Paiement prestation de formation des enseignants", "Cabinet EDUCONSEIL", 12750000, "Formation / atelier", [["DE", 3, "transmis"], ["CF", 7, null]]],
+      ["OP-2026-0135", "Frais de mission de supervision régionale", "Équipe de supervision", 2140000, "Frais de mission", [["DE", 1, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 3, null]]],
+      ["OP-2026-0130", "Décompte n°3, construction de salles de classe", "BTP Horizon", 68300000, "Marché / contrat", [["DE", 2, "transmis"], ["CF", 4, "vise"], ["DE", 2, "transmis"], ["AC", 6, null]]],
+      ["OP-2026-0127", "Atelier de validation des curricula", "Hôtel La Résidence", 5600000, "Formation / atelier", [["DE", 2, "transmis"], ["CF", 3, "differe", "Pièces justificatives incomplètes : liste de présence non signée."], ["DE", 4, null]]],
+      ["OP-2026-0122", "Maintenance du parc informatique, T3", "INFOTECH Services", 4200000, "Fonctionnement", [["DE", 2, "transmis"], ["CF", 3, "vise"], ["DE", 1, "transmis"], ["AC", 4, "paye"]]],
+      ["OP-2026-0119", "Achat de véhicule de liaison", "AUTO PLUS", 31000000, "Marché / contrat", [["DE", 3, "transmis"], ["CF", 5, "rejete", "Dépense non inscrite au plan de passation des marchés."]]],
+      ["OP-2026-0115", "Indemnités des points focaux, septembre", "Points focaux régionaux", 7800000, "Indemnités / salaires", [["DE", 2, "transmis"], ["CF", 7, "vise"], ["DE", 2, "transmis"], ["AC", 3, "paye"]]],
+      ["OP-2026-0110", "Location de salle, revue à mi-parcours", "Centre de conférences", 3300000, "Formation / atelier", [["DE", 1, "transmis"], ["CF", 2, "vise"], ["DE", 1, "transmis"], ["AC", 3, "differe", "RIB du bénéficiaire à actualiser."], ["DE", 3, "transmis"], ["AC", 2, "paye"]]]
     ];
     return sc.map(function (s) {
       var total = s[5].reduce(function (x, e) { return x + e[1]; }, 0);
@@ -686,21 +687,21 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
       if (ui.retardSeul) { var c = courante(d); if (!c || niveau(c) !== "retard") return false; }
       if (q && (d.ref + " " + d.objet + " " + d.beneficiaire + " " + d.nature).toLowerCase().indexOf(q) < 0) return false;
       return true;
-    }).sort(function (a, b) { return a.ref < b.ref ? 1 : -1; });
+    }).sort(triOP);
   }
 
   function vueDossiers() {
     var list = filtrer();
     var segs = [["tous", "Tous"], ["DE", "À la DE"], ["CF", "Au CF"], ["AC", "À l'AC"], ["clos", "Clôturés"]];
     var html = '<section class="panel"><div class="panel-head"><h2>Dossiers</h2><span class="muted">' + list.length + " sur " + etat.dossiers.length + "</span></div>";
-    html += '<div class="filters"><input type="search" id="f-q" placeholder="Rechercher une référence, un objet, un bénéficiaire…" value="' + h(ui.recherche) + '" aria-label="Rechercher">' +
+    html += '<div class="filters"><input type="search" id="f-q" placeholder="Rechercher un n° d\'OP, un objet, un bénéficiaire…" value="' + h(ui.recherche) + '" aria-label="Rechercher">' +
       '<div class="seg" role="group" aria-label="Position">' + segs.map(function (s) { return '<button data-pos="' + s[0] + '" aria-pressed="' + (ui.position === s[0]) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
       '<label class="check"><input type="checkbox" id="f-retard"' + (ui.retardSeul ? " checked" : "") + "> En retard uniquement</label></div>";
     if (!list.length) {
       html += '<div class="table-wrap"><div class="empty">' + (etat.dossiers.length ? "Aucun dossier ne correspond aux filtres." : ui.lecture ? "Aucun dossier n'a encore été enregistré." : "Aucun dossier pour l'instant. Cliquez sur « Nouveau dossier » pour enregistrer le premier.") + "</div></div></section>";
       return html;
     }
-    html += '<div class="table-wrap"><table><thead><tr><th>Référence</th><th>Objet</th><th>Bénéficiaire</th><th class="r">Montant</th><th>Position</th><th>Délai étape</th><th>Dernière décision</th><th class="r">Durée totale</th></tr></thead><tbody>';
+    html += '<div class="table-wrap"><table><thead><tr><th>N° OP</th><th>Objet</th><th>Bénéficiaire</th><th class="r">Montant</th><th>Position</th><th>Délai étape</th><th>Dernière décision</th><th class="r">Durée totale</th></tr></thead><tbody>';
     list.forEach(function (d) {
       var c = courante(d);
       var dern = d.etapes.slice().reverse().filter(function (e) { return e.decision && e.decision !== "transmis"; })[0];
@@ -724,8 +725,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     html += "</tbody></table></div></section>";
 
     html += '<section class="panel"><div class="panel-head"><h2>Temps passé par dossier</h2><div class="filters" style="margin:0"><button class="btn small" data-act="export-csv">Exporter en CSV (Excel)</button></div></div>';
-    html += '<div class="table-wrap"><table><thead><tr><th>Référence</th><th>Objet</th><th>Situation</th><th class="r">DE</th><th class="r">CF</th><th class="r">AC</th><th class="r">Total</th><th class="r">Allers-retours CF</th></tr></thead><tbody>';
-    etat.dossiers.slice().sort(function (a, b) { return a.ref < b.ref ? 1 : -1; }).forEach(function (d) {
+    html += '<div class="table-wrap"><table><thead><tr><th>N° OP</th><th>Objet</th><th>Situation</th><th class="r">DE</th><th class="r">CF</th><th class="r">AC</th><th class="r">Total</th><th class="r">Allers-retours CF</th></tr></thead><tbody>';
+    etat.dossiers.slice().sort(triOP).forEach(function (d) {
       var nbCF = d.etapes.filter(function (e) { return e.acteur === "CF"; }).length;
       html += '<tr class="clickable" data-open="' + d.id + '" tabindex="0"><td class="ref">' + h(d.ref) + '</td><td class="objet">' + h(d.objet) + "</td><td>" + chipPos(d) + "</td>" +
         ["DE", "CF", "AC"].map(function (a) {
@@ -760,18 +761,27 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
   function ouvrirDlg(html) { dlg.innerHTML = html; if (!dlg.open) { try { dlg.showModal(); } catch (e) { dlg.setAttribute("open", ""); } } }
   function fermerDlg() { try { dlg.close(); } catch (e) { dlg.removeAttribute("open"); } }
 
-  function prochaineRef() {
-    var an = new Date().getFullYear(), max = 0;
-    etat.dossiers.forEach(function (d) { var m = /(\d{4})-(\d+)$/.exec(d.ref); if (m && +m[1] === an) max = Math.max(max, +m[2]); });
-    return "PRSEB-" + an + "-" + String(max + 1).padStart(4, "0");
+  // Le n° d'ordre de paiement est la clé des dossiers : comparé sans tenir compte
+  // des majuscules ni des espaces.
+  function cleOP(s) { return String(s || "").replace(/\s+/g, "").toUpperCase(); }
+  function nettoyerOP(s) { return String(s || "").trim().replace(/\s+/g, " "); }
+  function parOP(op, saufId) {
+    var k = cleOP(op);
+    return etat.dossiers.filter(function (x) { return cleOP(x.ref) === k && x.id !== saufId; })[0];
   }
+  function doublonsOP(liste) {
+    var vus = {}, dbl = [];
+    liste.forEach(function (d) { var k = cleOP(d.ref); if (vus[k] && dbl.indexOf(d.ref) < 0) dbl.push(d.ref); vus[k] = true; });
+    return dbl;
+  }
+  function triOP(a, b) { return String(b.ref).localeCompare(String(a.ref), "fr", { numeric: true }); }
 
   function formDossier(d) {
     var nouveau = !d;
-    d = d || { ref: prochaineRef(), objet: "", beneficiaire: "", montant: "", nature: NATURES[0], dateArrivee: aujourdhui() };
+    d = d || { ref: "", objet: "", beneficiaire: "", montant: "", nature: NATURES[0], dateArrivee: aujourdhui() };
     ouvrirDlg('<form class="dlg" id="form-dossier" data-id="' + (nouveau ? "" : d.id) + '"><div class="dlg-head"><div><span class="label">' + (nouveau ? "Enregistrement" : "Modification") + '</span><h2>' + (nouveau ? "Nouveau dossier" : h(d.ref)) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>' +
       '<div class="form-grid">' +
-      '<div class="field"><label class="label" for="d-ref">Référence</label><input type="text" id="d-ref" required value="' + h(d.ref) + '"></div>' +
+      '<div class="field"><label class="label" for="d-ref">N° d\'ordre de paiement</label><input type="text" id="d-ref" required autocomplete="off" value="' + h(d.ref) + '" placeholder="Ex. OP-2026-0145"></div>' +
       '<div class="field"><label class="label" for="d-nature">Nature de la dépense</label><select id="d-nature">' + NATURES.map(function (n) { return "<option" + (n === d.nature ? " selected" : "") + ">" + n + "</option>"; }).join("") + "</select></div>" +
       '<div class="field full"><label class="label" for="d-objet">Objet</label><input type="text" id="d-objet" required value="' + h(d.objet) + '" placeholder="Ex. Paiement du décompte n°2, réhabilitation d\'écoles"></div>' +
       '<div class="field"><label class="label" for="d-benef">Bénéficiaire / fournisseur</label><input type="text" id="d-benef" value="' + h(d.beneficiaire) + '"></div>' +
@@ -784,7 +794,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     var d = etat.dossiers.filter(function (x) { return x.id === id; })[0];
     if (!d) { fermerDlg(); return; }
     var c = courante(d);
-    var html = '<div class="dlg" data-id="' + d.id + '"><div class="dlg-head"><div><span class="label">' + h(d.nature) + '</span><h2><span class="mono" style="font-size:1.1rem">' + h(d.ref) + "</span><br>" + h(d.objet) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>';
+    var html = '<div class="dlg" data-id="' + d.id + '"><div class="dlg-head"><div><span class="label">Ordre de paiement · ' + h(d.nature) + '</span><h2><span class="mono" style="font-size:1.1rem">' + h(d.ref) + "</span><br>" + h(d.objet) + '</h2></div><button type="button" class="x" data-act="close" aria-label="Fermer">×</button></div>';
     html += '<div class="meta"><div><div class="label">Bénéficiaire</div>' + h(d.beneficiaire || "—") + '</div><div><div class="label">Montant</div><span class="num">' + h(fm(d.montant)) + '</span></div><div><div class="label">Position</div>' + chipPos(d) + '</div><div><div class="label">Durée totale</div><span class="num">' + dureeTotale(d) + " j ouvrables</span></div>" +
       (d.modifiePar ? '<div><div class="label">Dernière mise à jour</div>' + h(d.modifiePar) + ' <span class="muted" style="font-size:.82rem">' + h(fd(d.modifieLe.slice(0, 10))) + "</span></div>" : "") + "</div>";
 
@@ -883,7 +893,7 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     } catch (e) { /* téléchargement bloqué : la zone de copie reste disponible */ }
   }
   function csv() {
-    var lignes = [["Référence", "Objet", "Bénéficiaire", "Nature", "Montant", "Situation", "Arrivée DE", "Jours DE", "Jours CF", "Jours AC", "Durée totale (j ouvrables)", "Dernière décision", "Motif"]];
+    var lignes = [["N° ordre de paiement", "Objet", "Bénéficiaire", "Nature", "Montant", "Situation", "Arrivée DE", "Jours DE", "Jours CF", "Jours AC", "Durée totale (j ouvrables)", "Dernière décision", "Motif"]];
     etat.dossiers.forEach(function (d) {
       var p = position(d);
       var dern = d.etapes.slice().reverse().filter(function (e) { return e.decision && e.decision !== "transmis"; })[0];
@@ -953,6 +963,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
         try {
           var o = JSON.parse(r.result);
           if (!o || !Array.isArray(o.dossiers)) throw new Error();
+          var dbl = doublonsOP(o.dossiers);
+          if (dbl.length) { toast("Import refusé : n° d'ordre de paiement en double (" + dbl.slice(0, 3).join(", ") + ")."); return; }
           etat.dossiers = o.dossiers;
           etat.params = Object.assign({}, defautParams, o.params || {});
           valider({ type: "tout" }, null, o.dossiers.length + " dossier(s) importé(s).");
@@ -984,6 +996,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
 
   dlg.addEventListener("click", function (ev) {
     if (ev.target === dlg) { fermerDlg(); return; }
+    var ouvrir = ev.target.closest("[data-ouvrir]");
+    if (ouvrir) { detail(ouvrir.dataset.ouvrir); return; }
     var act = ev.target.closest("[data-act]"); if (!act) return;
     var a = act.dataset.act, d = trouver(dlgId());
     if (a === "close") fermerDlg();
@@ -1003,9 +1017,13 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     if (ev.target.id === "form-action") { enregistrerAction(trouver(dlgId())); return; }
     if (ev.target.id !== "form-dossier") return;
     var id = ev.target.dataset.id, err = document.getElementById("d-err");
-    var ref = document.getElementById("d-ref").value.trim(), objet = document.getElementById("d-objet").value.trim();
-    if (!ref || !objet) { err.textContent = "La référence et l'objet sont obligatoires."; err.hidden = false; return; }
-    if (etat.dossiers.some(function (x) { return x.ref === ref && x.id !== id; })) { err.textContent = "La référence " + ref + " existe déjà."; err.hidden = false; return; }
+    var ref = nettoyerOP(document.getElementById("d-ref").value), objet = document.getElementById("d-objet").value.trim();
+    if (!ref || !objet) { err.textContent = "Le n° d'ordre de paiement et l'objet sont obligatoires."; err.hidden = false; return; }
+    var existant = parOP(ref, id);
+    if (existant) {
+      err.innerHTML = "L'ordre de paiement " + h(existant.ref) + ' est déjà enregistré. <button type="button" class="lien" data-ouvrir="' + h(existant.id) + '">Ouvrir ce dossier</button>';
+      err.hidden = false; return;
+    }
     var m = document.getElementById("d-montant").value;
     var champs = { ref: ref, objet: objet, beneficiaire: document.getElementById("d-benef").value.trim(), montant: m === "" ? "" : +m, nature: document.getElementById("d-nature").value };
     if (id) { Object.assign(trouver(id), champs); valider({ type: "maj", d: trouver(id) }, id, "Dossier modifié."); return; }
@@ -1041,8 +1059,8 @@ dialog::backdrop { background: rgba(10,16,28,.45); }
     try {
       var o = JSON.parse(localStorage.getItem(CLE) || "null");
       var deja = {};
-      etat.dossiers.forEach(function (d) { deja[d.id] = true; deja["r:" + d.ref] = true; });
-      return o && Array.isArray(o.dossiers) ? o.dossiers.filter(function (d) { return !d.exemple && !deja[d.id] && !deja["r:" + d.ref]; }) : [];
+      etat.dossiers.forEach(function (d) { deja[d.id] = true; deja["r:" + cleOP(d.ref)] = true; });
+      return o && Array.isArray(o.dossiers) ? o.dossiers.filter(function (d) { return !d.exemple && !deja[d.id] && !deja["r:" + cleOP(d.ref)]; }) : [];
     } catch (e) { return []; }
   }
 

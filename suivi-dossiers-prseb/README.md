@@ -8,6 +8,8 @@ Application web (un seul fichier `index.html`, sans serveur) pour suivre la dur�
 
 Chaque acteur dispose de **5 jours ouvrables** (modifiable dans les Paramètres).
 
+Chaque dossier est identifié par son **numéro d'ordre de paiement (OP)**, qui en est la clé : il est obligatoire et ne peut pas être enregistré deux fois. Les majuscules et les espaces ne comptent pas, donc « OP-2026-0145 », « op-2026-0145 » et « OP-2026- 0145 » désignent le même ordre de paiement. En cas de doublon, l'application propose d'ouvrir le dossier existant.
+
 ## Circuit géré
 
 1. Le dossier arrive au secrétariat de la DE, qui le transmet au CF.
@@ -20,7 +22,7 @@ Chaque acteur dispose de **5 jours ouvrables** (modifiable dans les Paramètres)
 ## Fonctions
 
 - Tableau de bord : nombre de dossiers à chaque étape du circuit, retards, délais moyens par acteur comparés au délai réglementaire, liste des dossiers à relancer.
-- Liste des dossiers avec recherche et filtres (position, retard).
+- Liste des dossiers avec recherche par n° d'ordre de paiement, objet ou bénéficiaire, et filtres (position, retard).
 - Fiche dossier : décision avec date et motif, historique complet, échéance, annulation de la dernière action.
 - Rapports : performance par acteur sur une période, temps passé par dossier, export CSV (ouvrable dans Excel).
 - Paramètres : délais, jours fériés (fixes `MM-JJ` ou datés `AAAA-MM-JJ`), devise, sauvegarde et import JSON.

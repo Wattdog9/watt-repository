@@ -75,7 +75,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 function dossierValide(d) {
   if (!d || typeof d !== "object") return "Dossier manquant.";
   if (typeof d.id !== "string" || !d.id) return "Identifiant manquant.";
-  if (typeof d.ref !== "string" || !d.ref.trim()) return "La référence est obligatoire.";
+  if (typeof d.ref !== "string" || !d.ref.trim()) return "Le n° d'ordre de paiement est obligatoire.";
   if (typeof d.objet !== "string" || !d.objet.trim()) return "L'objet est obligatoire.";
   if (["en_cours", "paye", "rejete"].indexOf(d.statut) < 0) return "Statut inconnu.";
   if (!Array.isArray(d.etapes) || !d.etapes.length) return "Le dossier doit avoir au moins une étape.";
@@ -85,6 +85,11 @@ function dossierValide(d) {
   }
   return null;
 }
+
+// Le n° d'ordre de paiement est la clé des dossiers (sans tenir compte des majuscules ni des espaces).
+function cleOP(s) { return String(s || "").replace(/\s+/g, "").toUpperCase(); }
+function opPris(op, saufId) { return base.dossiers.some((d) => cleOP(d.ref) === cleOP(op) && d.id !== saufId); }
+function messageOP(op) { return "L'ordre de paiement " + op + " est déjà enregistré."; }
 
 function paramsValides(p) {
   if (!p || typeof p !== "object") return null;
@@ -198,7 +203,7 @@ async function api(req, res, url) {
     const err = dossierValide(dossier);
     if (err) return repondre(res, 400, { erreur: err });
     if (trouver(dossier.id) >= 0) return repondre(res, 409, { erreur: "Ce dossier existe déjà." });
-    if (base.dossiers.some((d) => d.ref === dossier.ref)) return repondre(res, 409, { erreur: "La référence " + dossier.ref + " existe déjà." });
+    if (opPris(dossier.ref)) return repondre(res, 409, { erreur: messageOP(dossier.ref) });
     const d = Object.assign({}, dossier, { exemple: false, version: 1, creePar: nom, modifiePar: nom, modifieLe: new Date().toISOString() });
     base.dossiers.push(d);
     enregistrer();
@@ -222,7 +227,7 @@ async function api(req, res, url) {
     }
     const err = dossierValide(dossier);
     if (err) return repondre(res, 400, { erreur: err });
-    if (base.dossiers.some((d) => d.ref === dossier.ref && d.id !== id)) return repondre(res, 409, { erreur: "La référence " + dossier.ref + " existe déjà." });
+    if (opPris(dossier.ref, id)) return repondre(res, 409, { erreur: messageOP(dossier.ref) });
     const d = Object.assign({}, dossier, { id, creePar: actuel.creePar, version: (actuel.version || 0) + 1, modifiePar: nom, modifieLe: new Date().toISOString() });
     base.dossiers[i] = d;
     enregistrer();
@@ -251,6 +256,11 @@ async function api(req, res, url) {
     for (const d of b.dossiers) {
       const err = dossierValide(d);
       if (err) return repondre(res, 400, { erreur: "Dossier " + ((d && d.ref) || "?") + " : " + err });
+    }
+    const vus = new Set();
+    for (const d of b.dossiers) {
+      if (vus.has(cleOP(d.ref))) return repondre(res, 400, { erreur: "Import refusé : n° d'ordre de paiement en double (" + d.ref + ")." });
+      vus.add(cleOP(d.ref));
     }
     base.dossiers = b.dossiers.map((d) => Object.assign({}, d, { version: (d.version || 0) + 1, modifiePar: nom, modifieLe: new Date().toISOString() }));
     if (b.params) base.params = paramsValides(b.params) || base.params;
