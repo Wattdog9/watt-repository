@@ -20,7 +20,7 @@ title(P, "B1:D1", "PARAMÈTRES ET BARÈMES – ATELIERS (Arrêté n°020/MEFB/CA
 section(P, "B3:D3", "1. Paramètres généraux")
 header(P, 4, 2, ["Paramètre", "Valeur", "Source / observation"])
 gen = [
-    ("Taux frais Trésor Pay", 0.01, "Modèle ETAT DES PERDIEMS : 1 % x (total perdiems + total transport)", "0%"),
+    ("Taux frais Trésor Pay", 0.01, "1 % du montant des perdiems (instruction RAF)", "0%"),
     ("Prix du litre de super (FCFA)", 875, "À METTRE À JOUR selon le prix à la pompe en vigueur (valeur indicative)", NUM),
     ("Consommation moyenne (litres / 100 km)", 15, "Arrêté 020, art. 17 b) – véhicules administratifs / autorités", NUM),
     ("Plancher transport autorités (FCFA)", 25000, "Arrêté 020, art. 17 b) – minimum si le calcul au km est inférieur", NUM),
@@ -32,6 +32,11 @@ for i, (lab, val, src, fmt) in enumerate(gen):
     style(P.cell(r, 3, val), font=F_IN, fill=FILL_IN, align=RIGHT, fmt=fmt)
     style(P.cell(r, 4, src), font=F_SMALL)
 TAUX_TP, PRIX_SUPER, CONSO, PLANCHER, COEF_AR = "Parametres!$C$5", "Parametres!$C$6", "Parametres!$C$7", "Parametres!$C$8", "Parametres!$C$9"
+style(P.cell(10, 2, "Base de calcul des frais Trésor Pay"))
+style(P.cell(10, 3, "Perdiems seuls"), font=F_IN, fill=FILL_IN, align=RIGHT)
+style(P.cell(10, 4, "« Perdiems seuls » (par défaut) ou « Perdiems + transport » (ancien modèle d'état / budget TDR)"), font=F_SMALL)
+dv_tp = DataValidation(type="list", formula1='"Perdiems seuls,Perdiems + transport"'); P.add_data_validation(dv_tp); dv_tp.add("C10")
+BASE_TP = "Parametres!$C$10"
 
 section(P, "B11:D11", "2. Sources de financement")
 header(P, 12, 2, ["Source", "Colonne de l'état", "Observation"])
@@ -242,7 +247,7 @@ section(S, f"B{RC}:J{RC}", "IV. RÉCAPITULATIF ET CONTRÔLE BUDGÉTAIRE")
 rec = [
     ("Total perdiems", f"={TOT_PERD}"),
     ("Total transport", f"={TOT_TR}"),
-    ("Frais Trésor Pay (taux x (perdiems + transport))", f"=ROUND({TAUX_TP}*(J{RC+1}+J{RC+2}),0)"),
+    ("Frais Trésor Pay (taux x base définie dans Parametres)", f'=ROUND({TAUX_TP}*(J{RC+1}+IF({BASE_TP}="Perdiems + transport",J{RC+2},0)),0)'),
     ("TOTAL GÉNÉRAL À PAYER", f"=J{RC+1}+J{RC+2}+J{RC+3}"),
     ("Budget « perdiems participants » prévu au TDR", f"=N({INFO['Budget « perdiems participants » prévu au TDR (contrôle)']})"),
     ("Écart (Budget TDR – Total général)", f"=J{RC+5}-J{RC+4}"),
@@ -332,7 +337,8 @@ box(E, f"B{rt}:G{rt}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
 # Trésor pay
 r = rt + 2
 E.merge_cells(f"B{r}:E{r}")
-E[f"B{r}"] = f'="Frais TRESOR PAY : "&ROUND({TAUX_TP}*100,2)&" % x (Montant total perdiem + total transport) = "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD}+{TOT_TR},0)'
+E[f"B{r}"] = (f'=IF({BASE_TP}="Perdiems + transport","Frais TRESOR PAY : "&ROUND({TAUX_TP}*100,2)&" % x (Montant total perdiem + total transport) = "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD}+{TOT_TR},0),'
+               f'"Frais TRESOR PAY : "&ROUND({TAUX_TP}*100,2)&" % x Montant total perdiem = "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD},0))')
 box(E, f"B{r}:E{r}", font=F_B)
 E.merge_cells(f"F{r}:G{r}"); E[f"F{r}"] = f"={TOT_TP}"
 box(E, f"F{r}:G{r}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
@@ -398,7 +404,7 @@ rows = [
     ("MU spécifique", "Laisser vide pour appliquer automatiquement le barème. Renseigner uniquement pour imposer un autre montant (à justifier)."),
     ("Exemple pré-rempli", "Le fichier est pré-rempli avec le TDR « Activité 2.1.1 – PRSEB / DMOSS » (Yamoussoukro, 18-24/10/2026). "
                            "Effacer les cellules jaunes pour un nouvel atelier. Les distances kilométriques de l'exemple sont indicatives."),
-    ("Hypothèses", "Frais Trésor Pay = 1 % x (perdiems + transport), arrondi à l'unité. Pour le calcul carburant, la distance saisie est la distance ALLER multipliée par 2 (aller-retour) – modifiable dans Parametres."),
+    ("Hypothèses", "Frais Trésor Pay = 1 % du montant total des perdiems, arrondi à l'unité (base modifiable dans Parametres!C10 : « Perdiems + transport »). Pour le calcul carburant, la distance saisie est la distance ALLER multipliée par 2 (aller-retour) – modifiable dans Parametres."),
 ]
 for i, (a, b) in enumerate(rows):
     r = 3 + i
