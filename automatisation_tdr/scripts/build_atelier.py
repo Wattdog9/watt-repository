@@ -195,9 +195,17 @@ box(S, f"B{PT}:J{PT}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
 S[f"E{PT}"] = f"=SUM(E{PA0}:E{PA1})"
 S[f"J{PT}"] = f"=SUM(J{PA0}:J{PA1})"
 TOT_PERD = f"Saisie_TDR!$J${PT}"
+TP_LABEL = f'"Frais Trésor Pay ("&ROUND({TAUX_TP}*100,2)&" % "&IF({BASE_TP}="Perdiems + transport","des perdiems + transport","du total des perdiems")&")"'
+PTP = PT + 1
+S.merge_cells(f"B{PTP}:I{PTP}"); S[f"B{PTP}"] = "=" + TP_LABEL
+box(S, f"B{PTP}:I{PTP}", font=F_B, fill=FILL_TOT, align=RIGHT)
+S[f"J{PTP}"] = f'=ROUND({TAUX_TP}*({TOT_PERD}+IF({BASE_TP}="Perdiems + transport",Saisie_TDR!$J${PT+3+2+25},0)),0)'
+style(S[f"J{PTP}"], font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
+note(S[f"J{PTP}"], "Calcul automatique : taux Trésor Pay (Parametres!C5) x total des perdiems. Base modifiable dans Parametres!C10.")
+TOT_TP = f"Saisie_TDR!$J${PTP}"
 
 # ---- B. Transport
-TB_H = PT + 2
+TB_H = PT + 3
 section(S, f"B{TB_H}:J{TB_H}", "III. TRANSPORT DES PARTICIPANTS (une ligne par localité de provenance)")
 header(S, TB_H + 1, 2, ["N°", "Localité de provenance", "Type de transport (barème art. 17 b – liste)",
                         "Distance ALLER (km)", "Nombre de participants", "MU spécifique (optionnel)",
@@ -247,7 +255,7 @@ section(S, f"B{RC}:J{RC}", "IV. RÉCAPITULATIF ET CONTRÔLE BUDGÉTAIRE")
 rec = [
     ("Total perdiems", f"={TOT_PERD}"),
     ("Total transport", f"={TOT_TR}"),
-    ("Frais Trésor Pay (taux x base définie dans Parametres)", f'=ROUND({TAUX_TP}*(J{RC+1}+IF({BASE_TP}="Perdiems + transport",J{RC+2},0)),0)'),
+    ("=" + TP_LABEL, f"={TOT_TP}"),
     ("TOTAL GÉNÉRAL À PAYER", f"=J{RC+1}+J{RC+2}+J{RC+3}"),
     ("Budget « perdiems participants » prévu au TDR", f"=N({INFO['Budget « perdiems participants » prévu au TDR (contrôle)']})"),
     ("Écart (Budget TDR – Total général)", f"=J{RC+5}-J{RC+4}"),
@@ -255,11 +263,10 @@ rec = [
 for i, (lab, f) in enumerate(rec):
     r = RC + 1 + i
     S.merge_cells(f"B{r}:I{r}"); S[f"B{r}"] = lab
-    bold = lab.startswith("TOTAL") or lab.startswith("Écart")
+    bold = lab.startswith("TOTAL") or lab.startswith("Écart") or lab.startswith("=")
     box(S, f"B{r}:I{r}", font=F_B if bold else F_N, fill=FILL_TOT if bold else None, align=RIGHT)
     S[f"J{r}"] = f
     style(S[f"J{r}"], font=F_B if bold else F_N, fill=FILL_TOT if bold else FILL_CALC, align=RIGHT, fmt=NUM)
-TOT_TP = f"Saisie_TDR!$J${RC+3}"
 TOT_GEN = f"Saisie_TDR!$J${RC+4}"
 r = RC + 7
 S.merge_cells(f"B{r}:J{r}")
@@ -304,10 +311,39 @@ box(E, f"B{rr}:G{rr}")
 for c in "FG":
     E[f"{c}{rr}"].number_format = NUM; E[f"{c}{rr}"].alignment = RIGHT
 E.row_dimensions[rr].height = 58
-rt = rr + 1
-E.merge_cells(f"B{rt}:E{rt}"); E[f"B{rt}"] = "TOTAL"
-E[f"F{rt}"] = f"=F{rr}"; E[f"G{rt}"] = f"=G{rr}"
+r2 = rr + 1
+E[f"B{r2}"] = f"=B{rr}"
+E.merge_cells(f"C{r2}:E{r2}")
+E[f"C{r2}"] = f'="Frais Trésor Pay : "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD}+IF({BASE_TP}="Perdiems + transport",{TOT_TR},0),0)&" (total des perdiems"&IF({BASE_TP}="Perdiems + transport"," + transport","")&")"'
+E[f"F{r2}"] = f'=IF(LEFT({INFO["Source de financement"]},8)="Bailleur",{TOT_TP},0)'
+E[f"G{r2}"] = f'=IF(LEFT({INFO["Source de financement"]},6)="Trésor",{TOT_TP},0)'
+box(E, f"B{r2}:G{r2}")
+for c in "FG":
+    E[f"{c}{r2}"].number_format = NUM; E[f"{c}{r2}"].alignment = RIGHT
+E.row_dimensions[r2].height = 30
+rt = r2 + 1
+E.merge_cells(f"B{rt}:E{rt}"); E[f"B{rt}"] = "TOTAL (perdiems + frais Trésor Pay)"
+E[f"F{rt}"] = f"=F{rr}+F{r2}"; E[f"G{rt}"] = f"=G{rr}+G{r2}"
 box(E, f"B{rt}:G{rt}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
+
+# Trésor pay
+r = rt + 2
+section(E, f"B{r}:G{r}", "Frais TRESOR PAY :")
+E.merge_cells(f"C{r+1}:D{r+1}"); E.merge_cells(f"F{r+1}:G{r+1}")
+E[f"B{r+1}"] = "Base de calcul"; E[f"C{r+1}"] = "Montant de la base"; E[f"E{r+1}"] = "Taux"; E[f"F{r+1}"] = "Montant"
+box(E, f"B{r+1}:G{r+1}", font=F_H, fill=FILL_H, align=CENTER)
+r += 2
+E.merge_cells(f"C{r}:D{r}"); E.merge_cells(f"F{r}:G{r}")
+E[f"B{r}"] = f'=IF({BASE_TP}="Perdiems + transport","Total perdiems + total transport","Montant total des perdiems")'
+E[f"C{r}"] = f'={TOT_PERD}+IF({BASE_TP}="Perdiems + transport",{TOT_TR},0)'
+E[f"E{r}"] = f"={TAUX_TP}"
+E[f"F{r}"] = f"={TOT_TP}"
+box(E, f"B{r}:G{r}", fmt=NUM)
+E[f"E{r}"].number_format = "0%"
+for c in "CEF":
+    E[f"{c}{r}"].alignment = RIGHT
+E[f"F{r}"].font = F_B; E[f"F{r}"].fill = FILL_TOT
+rt = r
 
 # Transport
 r = rt + 2
@@ -334,17 +370,8 @@ E[f"B{rt}"] = "TOTAL"; E[f"C{rt}"] = "TOTAL"
 E[f"E{rt}"] = f"=SUM(E{E1}:E{E2})"; E[f"F{rt}"] = f"=SUM(F{E1}:F{E2})"
 box(E, f"B{rt}:G{rt}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
 
-# Trésor pay
-r = rt + 2
-E.merge_cells(f"B{r}:E{r}")
-E[f"B{r}"] = (f'=IF({BASE_TP}="Perdiems + transport","Frais TRESOR PAY : "&ROUND({TAUX_TP}*100,2)&" % x (Montant total perdiem + total transport) = "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD}+{TOT_TR},0),'
-               f'"Frais TRESOR PAY : "&ROUND({TAUX_TP}*100,2)&" % x Montant total perdiem = "&ROUND({TAUX_TP}*100,2)&" % x "&FIXED({TOT_PERD},0))')
-box(E, f"B{r}:E{r}", font=F_B)
-E.merge_cells(f"F{r}:G{r}"); E[f"F{r}"] = f"={TOT_TP}"
-box(E, f"F{r}:G{r}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
-
 # Détail perdiems
-r = r + 2
+r = rt + 2
 section(E, f"B{r}:G{r}", "Détail des perdiems")
 header(E, r + 1, 2, ["Libellé ou catégorie", "Nombre de personnes", "Nombre de jours", "Fréquence", "Montant unitaire", "Montant total"])
 # columns: B lib, C nb pers, D jours, E freq, F MU, G total
@@ -365,6 +392,10 @@ D2 = D1 + NPA - 1
 rt = D2 + 1
 E.merge_cells(f"B{rt}:F{rt}"); E[f"B{rt}"] = "TOTAL"
 E[f"G{rt}"] = f"=SUM(G{D1}:G{D2})"
+box(E, f"B{rt}:G{rt}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
+rt += 1
+E.merge_cells(f"B{rt}:F{rt}"); E[f"B{rt}"] = "=" + TP_LABEL
+E[f"G{rt}"] = f"={TOT_TP}"
 box(E, f"B{rt}:G{rt}", font=F_B, fill=FILL_TOT, align=RIGHT, fmt=NUM)
 
 # Arrêté
