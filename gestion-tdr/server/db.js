@@ -1,12 +1,58 @@
-import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import initSqlJs from 'sql.js';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+// Base SQLite stockée dans un fichier (sql.js : aucune compilation, fonctionne avec Node 18 et plus).
 const DB_PATH = resolve(process.env.TDR_DB || 'data/tdr.db');
 mkdirSync(dirname(DB_PATH), { recursive: true });
 
-export const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL;');
+const SQL = await initSqlJs();
+const sqlite = new SQL.Database(existsSync(DB_PATH) ? readFileSync(DB_PATH) : undefined);
+let enTransaction = false;
+
+function sauvegarder() {
+  const tmp = `${DB_PATH}.tmp`;
+  writeFileSync(tmp, Buffer.from(sqlite.export()));
+  renameSync(tmp, DB_PATH);
+  sqlite.exec('PRAGMA foreign_keys = ON');
+}
+
+// Petite couche offrant la même interface que DatabaseSync (prepare().run/get/all, exec).
+export const db = {
+  exec(sql) {
+    const ordre = sql.trim().toUpperCase();
+    sqlite.exec(sql);
+    if (ordre === 'BEGIN') enTransaction = true;
+    else if (ordre === 'COMMIT' || ordre === 'ROLLBACK') {
+      enTransaction = false;
+      if (ordre === 'COMMIT') sauvegarder();
+    } else if (!enTransaction) sauvegarder();
+  },
+  prepare(sql) {
+    const lignes = (params) => {
+      const st = sqlite.prepare(sql);
+      try {
+        st.bind(params.map((p) => (p === undefined ? null : typeof p === 'bigint' ? Number(p) : p)));
+        const out = [];
+        while (st.step()) out.push(st.getAsObject());
+        return out;
+      } finally {
+        st.free();
+      }
+    };
+    return {
+      all: (...p) => lignes(p),
+      get: (...p) => lignes(p)[0],
+      run: (...p) => {
+        lignes(p);
+        const lastInsertRowid = sqlite.exec('SELECT last_insert_rowid()')[0].values[0][0];
+        if (!enTransaction) sauvegarder();
+        return { lastInsertRowid };
+      },
+    };
+  },
+};
+sqlite.exec('PRAGMA foreign_keys = ON');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS parametres (

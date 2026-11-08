@@ -206,6 +206,10 @@ const dist = resolve('dist');
 if (existsSync(dist)) {
   app.use(express.static(dist));
   app.get(/^\/(?!api).*/, (_req, res) => res.sendFile(resolve(dist, 'index.html')));
+} else {
+  app.get(/^\/(?!api).*/, (_req, res) => res.status(503).type('html').send(
+    '<h2 style="font-family:Arial">Interface non compilée</h2><p style="font-family:Arial">Arrêtez le serveur puis lancez <b>npm start</b> ' +
+    '(qui compile l\'interface avant de démarrer), ou utilisez <b>npm run dev</b> puis ouvrez http://localhost:5173.</p>'));
 }
 
 app.use((e, _req, res, _next) => {
@@ -214,4 +218,11 @@ app.use((e, _req, res, _next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3001;
-app.listen(PORT, () => console.log(`API Gestion TDR prête sur http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`\n  Gestion des TDR démarrée : ouvrez http://localhost:${PORT} dans votre navigateur.`);
+  console.log('  (Ctrl + C pour arrêter)\n');
+}).on('error', (e) => {
+  if (e.code === 'EADDRINUSE') console.error(`\n  Le port ${PORT} est déjà utilisé : l'application tourne peut-être déjà (ouvrez http://localhost:${PORT}),\n  ou lancez-la sur un autre port, par ex. sous Windows : set PORT=3002 && npm run serveur\n`);
+  else console.error(e);
+  process.exit(1);
+});

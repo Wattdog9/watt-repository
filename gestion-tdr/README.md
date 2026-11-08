@@ -9,24 +9,36 @@ Application web (React + Node.js + SQLite) qui automatise le traitement des TDR 
 
 Référentiel : Arrêté n°020/MEFB/CAB du 20/02/2026 (art. 11, 12, 17) et Note n°401/MEFB/CAB/CCSPP-BM du 22/05/2026.
 
-## Installation
+## Installation (une seule fois)
 
-Prérequis : **Node.js 22.5 ou plus récent** (la base SQLite est intégrée à Node, aucun logiciel de base de données à installer).
+1. Installer **Node.js** (version 18 ou plus récente, version « LTS » conseillée) depuis https://nodejs.org.
+2. Ouvrir une invite de commandes (Windows : touche Windows, taper `cmd`) dans le dossier `gestion-tdr`, puis :
 
 ```bash
-cd gestion-tdr
 npm install
 ```
 
-### Utilisation quotidienne (un seul serveur)
+## Lancer l'application
 
 ```bash
-npm run build
 npm start
 ```
 
-Ouvrir http://localhost:3001. La base de données est créée automatiquement dans `data/tdr.db`
-(avec les barèmes officiels et un exemple d'atelier et de mission). Sauvegarder ce fichier suffit pour sauvegarder toutes les données.
+Attendre le message « Gestion des TDR démarrée », puis ouvrir **http://localhost:3001** dans le navigateur
+(Chrome, Edge ou Firefox). Laisser la fenêtre de commandes ouverte pendant l'utilisation ; `Ctrl + C` pour arrêter.
+
+La base de données est créée automatiquement dans `data/tdr.db` (avec les barèmes officiels et un exemple
+d'atelier et de mission). Sauvegarder ce fichier suffit pour sauvegarder toutes les données.
+Aucun logiciel de base de données n'est à installer.
+
+### En cas de problème
+
+| Symptôme | Solution |
+|---|---|
+| `'npm' n'est pas reconnu…` | Node.js n'est pas installé (ou fermer/rouvrir l'invite de commandes après l'installation). |
+| `Le port 3001 est déjà utilisé` | L'application tourne déjà : ouvrir http://localhost:3001. Sinon : `set PORT=3002 && npm run serveur`. |
+| Page « Interface non compilée » | Lancer `npm start` (et non `node server/index.js`). |
+| La page ne s'ouvre pas | Vérifier que la fenêtre de commandes est toujours ouverte et affiche « démarrée ». |
 
 ### Développement
 
@@ -76,7 +88,7 @@ Une modification ultérieure des barèmes ne change donc pas les états déjà v
 
 ```
 gestion-tdr/
-├── server/        API Express + base SQLite (schéma, données initiales)
+├── server/        API Express + base SQLite via sql.js (schéma, données initiales)
 ├── shared/        Moteur de calcul commun (navigateur + serveur) et tests
 └── src/           Interface React (pages de saisie et états imprimables)
 ```

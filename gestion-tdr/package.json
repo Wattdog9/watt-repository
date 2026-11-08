@@ -4,18 +4,22 @@
   "private": true,
   "description": "Traitement automatisé des TDR (ateliers et missions) – Arrêté 020/MEFB/CAB et Note 401",
   "type": "module",
-  "engines": { "node": ">=22.5" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"node --watch server/index.js\" \"vite\"",
     "build": "vite build",
-    "start": "node server/index.js",
-    "test": "node --test shared/calculs.test.js"
+    "start": "vite build && node server/index.js",
+    "test": "node --test shared/calculs.test.js",
+    "serveur": "node server/index.js"
   },
   "dependencies": {
     "express": "4.21.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-router-dom": "6.28.0"
+    "react-router-dom": "6.28.0",
+    "sql.js": "1.12.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "4.3.4",
