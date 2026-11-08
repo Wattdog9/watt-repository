@@ -1,0 +1,117 @@
+:root {
+  --marine: #1f3864;
+  --bleu: #2f5496;
+  --bleu-clair: #d9e1f2;
+  --saisie: #fff2cc;
+  --calc: #e2efda;
+  --vert: #2e7d32;
+  --rouge: #c00000;
+  --gris: #6b7280;
+  --bord: #c9ced6;
+  --fond: #f4f6fa;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1b1f24; background: var(--fond); }
+h1 { font-size: 22px; margin: 0; color: var(--marine); }
+h2 { font-size: 16px; margin: 0 0 12px; color: var(--marine); }
+h3 { font-size: 14px; margin: 18px 0 8px; color: var(--marine); }
+a { color: var(--bleu); }
+
+.barre { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: var(--marine); color: #fff; padding: 10px 24px; position: sticky; top: 0; z-index: 10; }
+.marque { font-weight: bold; font-size: 17px; }
+.marque span { font-weight: normal; opacity: .75; font-size: 13px; margin-left: 6px; }
+.barre nav { display: flex; gap: 4px; flex-wrap: wrap; }
+.barre nav a { color: #fff; text-decoration: none; padding: 7px 12px; border-radius: 6px; }
+.barre nav a.active, .barre nav a:hover { background: rgba(255,255,255,.15); }
+
+.page { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
+.carte { background: #fff; border: 1px solid var(--bord); border-radius: 10px; padding: 18px; margin-bottom: 18px; }
+.entete-page, .entete-section { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.boutons { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+.btn { display: inline-block; background: var(--bleu); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px;
+  font: inherit; cursor: pointer; text-decoration: none; margin-top: 4px; }
+.btn:hover { filter: brightness(1.1); }
+.btn.secondaire { background: #fff; color: var(--bleu); border: 1px solid var(--bleu); }
+.btn.vert { background: var(--vert); }
+.lien { background: none; border: 0; color: var(--bleu); cursor: pointer; font: inherit; padding: 0; }
+.danger { color: var(--rouge); }
+
+.badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; font-weight: bold; vertical-align: middle; }
+.badge.valide { background: #dcfce7; color: var(--vert); }
+.badge.brouillon { background: #fef3c7; color: #92400e; }
+.alerte, .succes { padding: 10px 14px; border-radius: 6px; margin: 10px 0; font-weight: bold; }
+.alerte { background: #fde8e8; color: var(--rouge); }
+.succes { background: #e7f6ea; color: var(--vert); }
+
+.tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.tuile { background: #fff; border: 1px solid var(--bord); border-radius: 10px; padding: 14px 18px; }
+.tuile .lib { color: var(--gris); font-size: 13px; }
+.tuile .val { font-size: 28px; font-weight: bold; color: var(--marine); }
+.tuile .sous { color: var(--gris); }
+
+.formulaire { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 16px; }
+.champ { display: flex; flex-direction: column; gap: 4px; }
+.champ.large { grid-column: 1 / -1; }
+.champ span { font-size: 12px; font-weight: bold; color: #374151; }
+input, select, textarea { font: inherit; border: 1px solid var(--bord); border-radius: 5px; padding: 6px 8px; width: 100%;
+  background: var(--saisie); color: #0000c8; }
+input:disabled, select:disabled, textarea:disabled { background: #f3f4f6; color: #374151; }
+input.court { width: 90px; }
+.infos-calc { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 14px; padding: 10px 14px; background: var(--calc); border-radius: 6px; }
+.infos-calc span { display: block; font-size: 12px; color: var(--gris); }
+
+.defile { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+.grille th { background: var(--bleu); color: #fff; font-size: 12px; padding: 7px 6px; text-align: left; }
+.grille td { border-bottom: 1px solid #e5e7eb; padding: 5px 6px; vertical-align: middle; }
+.grille .num, .etat-table .num { text-align: right; white-space: nowrap; }
+.grille td.calc { background: var(--calc); }
+.grille tr.total td, .grille tfoot td { background: var(--bleu-clair); font-weight: bold; }
+.grille td.long { max-width: 420px; }
+.grille .vide { text-align: center; color: var(--gris); padding: 18px; }
+.grille.recap { max-width: 640px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; white-space: nowrap; }
+.petit { font-size: 12px; color: var(--gris); }
+.aide { margin-top: 12px; color: #374151; }
+.villes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ville { display: flex; align-items: center; gap: 4px; }
+.ville input { width: 150px; }
+
+/* ----------------------------- États imprimables ----------------------------- */
+.etat { background: #fff; border: 1px solid var(--bord); padding: 32px 36px; margin: 0 auto 24px; max-width: 900px; }
+.etat.paysage { max-width: 1200px; }
+.titre-etat { text-align: center; background: var(--marine); color: #fff; padding: 10px; font-size: 18px; letter-spacing: .5px; }
+.entete-etat { display: grid; grid-template-columns: 190px 1fr; gap: 4px 10px; margin: 16px 0; }
+.entete-etat dt { font-weight: bold; }
+.entete-etat dd { margin: 0; }
+.etat-table { margin-bottom: 8px; }
+.etat-table th { background: var(--bleu); color: #fff; border: 1px solid #808080; padding: 6px; font-size: 12px; }
+.etat-table td { border: 1px solid #808080; padding: 5px 6px; }
+.etat-table tfoot td, .total-general td { background: var(--bleu-clair); font-weight: bold; }
+.etat-table .detail { font-size: 12px; font-style: italic; color: #4b5563; }
+.total-general { margin-top: 14px; }
+.arrete { margin-top: 18px; }
+.signatures { display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px 60px; font-weight: bold; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; font-size: 11px; }
+  .no-print, .barre { display: none !important; }
+  .page { padding: 0; max-width: none; }
+  .etat { border: 0; padding: 0; max-width: none; }
+  .saut-page { break-after: page; }
+  .titre-etat, .etat-table th, .etat-table tfoot td, .total-general td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  tr { break-inside: avoid; }
+}
+@media (max-width: 640px) {
+  .barre { padding: 10px 16px; }
+  .etat { padding: 16px; }
+  .entete-etat { grid-template-columns: 1fr; }
+}
+
+/* Ajustements de largeur */
+.boutons select { width: auto; }
+.grille.saisie td input:not(.court) { min-width: 170px; }
+.grille.saisie td select { min-width: 200px; }
